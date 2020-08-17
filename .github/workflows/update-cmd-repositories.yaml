@@ -1,19 +1,21 @@
 ---
-name: Update cmd repositories
+name: Update dependent repositories
 on:
   push:
     branches:
       - master
 
 jobs:
-  update-cmd-repositories:
+  update-dependent-repositories:
     strategy:
       matrix:
-        repository: [cmd-registry-proxy-dns]
+        repository: [cmd-registry-proxy-dns, cmd-nsc]
     name: Update ${{ matrix.repository }}
     runs-on: ubuntu-latest
+    if: github.repository == 'networkservicemesh/cmd-template'
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout ${{ github.repository }}
+        uses: actions/checkout@v2
         with:
           path: ${{ github.repository }}
           repository: ${{ github.repository }}
@@ -34,23 +36,26 @@ jobs:
           git log -1 >> /tmp/commit-message
           echo "Commit Message:"
           cat /tmp/commit-message
-      - uses: actions/checkout@v2
+      - name: Checkout networkservicemesh/${{ matrix.repository }}
+        uses: actions/checkout@v2
         with:
           path: networkservicemesh/${{ matrix.repository }}
           repository: networkservicemesh/${{ matrix.repository }}
           token: ${{ secrets.NSM_BOT_GITHUB_TOKEN }}
-          sha: ${{ GITHUB_SHA }}
       - uses: actions/setup-go@v1
         with:
           go-version: 1.13.4
-      - name: Push update to ${{ matrix.repository }}
+      - name: Push update to the ${{ matrix.repository }}
         working-directory: networkservicemesh/${{ matrix.repository }}
         run: |
+          echo Starting to update repositotry ${{ matrix.repository }}
           git config --global user.email "nsmbot@networkservicmesh.io"
           git config --global user.name "NSMBot"
           git remote add cmd_template https://github.com/networkservicemesh/cmd-template.git
           git fetch cmd_template
-          git cherry-pick --no-commit ${sha}
-          git commit -F /tmp/commit-message
-          git checkout -b update/sdk-gomod
-          git push -f origin update/sdk-gomod
+          git diff cmd_template/master -R | git apply
+          git add $(git ls-tree --name-only -r cmd_template/master | grep ".*\.yml\|.*\.yaml\|.*\.md\|.*\.txt\|.*.\.conf")
+          git reset -- $(cat exclude.patch.conf)
+          git commit -s -F /tmp/commit-message
+          git checkout -b update/${{ github.repository }}
+          git push -f origin update/${{ github.repository }}
