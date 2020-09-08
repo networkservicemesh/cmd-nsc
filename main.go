@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"runtime"
 	"strconv"
 	"time"
 
@@ -190,18 +189,12 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		switch clientConf.Mechanism {
 		case kernel.MECHANISM:
 			outgoingMechanism.Parameters[common.InterfaceNameKey] = clientConf.Path[0]
-
-			logrus.Infof("%v", runtime.GOOS)
-			if runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-				// Check we are not macos or windows.
-				inode, err := fs.GetInode("/proc/self/ns/net")
-				if err != nil {
-					logrus.Errorf("could not retrieve a linux namespace %v", err)
-					return connections, err
-				}
-				outgoingMechanism.Parameters[kernel.NetNSInodeKey] = strconv.FormatUint(uint64(inode), 10)
+			inode, err := fs.GetInode("/proc/self/ns/net")
+			if err != nil {
+				logrus.Errorf("could not retrieve a linux namespace %v", err)
+				return connections, err
 			}
-
+			outgoingMechanism.Parameters[kernel.NetNSInodeKey] = strconv.FormatUint(uint64(inode), 10)
 			kernel.ToMechanism(outgoingMechanism).SetNetNSURL("unix:///proc/self/ns/net")
 
 		case memif.MECHANISM:
