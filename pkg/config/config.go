@@ -25,12 +25,12 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
 )
 
 var configMechanisms = map[string]string{
-	"memif":  memif.MECHANISM,
 	"kernel": kernel.MECHANISM,
+	"vfio":   vfio.MECHANISM,
 }
 
 // Config - configuration for cmd-nsmgr
@@ -41,9 +41,9 @@ type Config struct {
 
 	Routes    []string `default:"" desc:"A list of routes asked by client" split_words:"true"`
 	Labels    []string `default:"" desc:"A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services" split_words:"true"`
-	Mechanism string   `default:"kernel" desc:"Default Mechanism to use, supported values kernel,memif" split_words:"true"`
+	Mechanism string   `default:"kernel" desc:"Default Mechanism to use, supported values: kernel, vfio" split_words:"true"`
 
-	NetworkServices []NetworkServiceConfig `default:"" desc:"A list of Network Service Requests with format [{mechanism}]?:${nsName}[@domainName]?/${interfaceName/memIfSocketName}?${label1}=${value1}&${label2}=${value2}" split_words:"true"`
+	NetworkServices []NetworkServiceConfig `default:"" desc:"A list of Network Service Requests" split_words:"true"`
 }
 
 // IsValid - check if configuration is valid
@@ -52,10 +52,10 @@ func (c *Config) IsValid() error {
 		return errors.New("no network services are specified")
 	}
 	if c.Name == "" {
-		return errors.New("no cleint name specified")
+		return errors.New("no client name specified")
 	}
 	if c.ConnectTo.String() == "" {
-		return errors.New("no NSMGr ConnectTO URL are sepecified")
+		return errors.New("no NSMGr ConnectTO URL are specified")
 	}
 	return nil
 }
@@ -74,8 +74,8 @@ func (cfg *NetworkServiceConfig) UnmarshalBinary(text []byte) error {
 	if err != nil {
 		return err
 	}
-	cfg.Mechanism = u1.Scheme
 
+	cfg.Mechanism = u1.Scheme
 	if cfg.Mechanism != "" {
 		m, ok := configMechanisms[cfg.Mechanism]
 		if !ok {
@@ -83,13 +83,15 @@ func (cfg *NetworkServiceConfig) UnmarshalBinary(text []byte) error {
 		}
 		cfg.Mechanism = m
 	}
+
 	cfg.NetworkService = u1.Hostname()
-	cfg.Path = []string{}
+
 	for _, segm := range strings.Split(u1.Path, "/") {
 		if segm != "" {
 			cfg.Path = append(cfg.Path, segm)
 		}
 	}
+
 	for k, v := range u1.Query() {
 		if cfg.Labels == nil {
 			cfg.Labels = map[string]string{}
@@ -97,25 +99,32 @@ func (cfg *NetworkServiceConfig) UnmarshalBinary(text []byte) error {
 		cfg.Labels[k] = v[0]
 	}
 
+	if cfg.NetworkService == "" && len(cfg.Path) > 0 {
+		cfg.NetworkService = cfg.Path[0]
+		cfg.Path = cfg.Path[1:]
+	}
+
 	return nil
 }
 
 // IsValid - check if network service request is correct.
 func (cfg *NetworkServiceConfig) IsValid() error {
-	if cfg.Mechanism == "" {
-		return errors.New("invalid mechanism specified")
+	if cfg.NetworkService == "" {
+		return errors.New("no network service specified")
 	}
 	switch cfg.Mechanism {
-	case memif.MECHANISM:
-		// Verify folder for memif file exists and writable.
-		//TODO: Add support of this validation.
 	case kernel.MECHANISM:
 		// Verify interface name
 		if len(cfg.Path) > 1 {
-			return errors.New("invalid client interface name specified")
+			return errors.Errorf("invalid client interface name specified: %s", strings.Join(cfg.Path, "/"))
 		}
 		if len(cfg.Path[0]) > 15 {
-			return errors.New("interface part cannot exceed 15 characters")
+			return errors.Errorf("interface part cannot exceed 15 characters: %s", strings.Join(cfg.Path, "/"))
+		}
+	case vfio.MECHANISM:
+		// There should be no path
+		if len(cfg.Path) > 0 {
+			return errors.Errorf("no path supported for the VFIO mechanism: %s", strings.Join(cfg.Path, "/"))
 		}
 	}
 	return nil

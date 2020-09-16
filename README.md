@@ -10,18 +10,32 @@ This README will provide directions for building, testing, and debugging that co
 
 * NSM_NAME - A string value of network service client name (default "nsc")
 * NSM_CONNECT_TO - A Network service Manager connectTo URL (default "unix:///var/lib/networkservicemesh/nsm.io.sock")
-* NSM_MAX_TOKEN_LIFETIME -  A token lifetime duration (default 24h)                                                            
-* NSM_ROUTES - A comma separated list of routes.                                                                                 
+* NSM_MAX_TOKEN_LIFETIME -  A token lifetime duration (default 24h)
+* NSM_ROUTES - A comma separated list of routes.
 * NSM_LABELS - A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services
-* NSM_MECHANISM - Default Mechanism to use, supported values "kernel","memif"                                                         
+* NSM_MECHANISM - Default Mechanism to use, supported values "kernel", "vfio"
 * NSM_NETWORK_SERVICES - A list of Network Service Requests URLs with inner format 
-    - [{mechanism}]?:${nsName}[@domainName]?/${interfaceName/memIfSocketName}?${label1}=${value1}&${label2}=${value2}
-        - mechanism one of "kernel", "memif"
+    - \[kernel://]nsName\[@domainName]/interfaceName?\[label1=value1\*(&labelN=valueN)]
+    - \[vfio://]nsName\[@domainName]/?\[label1=value1\*(&labelN=valueN)]
         - nsName - a Network service name requested
-        - domainName - a interdomain service name
-        - interfaceName - a kernel interface name prefix, for kernel mechanism.
-        - memIfSocketName - a memif socket name to use for memif mechanism.
-        - labelX/valueX - a pairs of labels will be passed as part of request.
+        - domainName - an interdomain service name
+        - interfaceName - a kernel interface name, for kernel mechanism
+        - labelN/valueN - pairs of labels will be passed as a part of the request.
+    - Examples:
+        - vpn/if-vpn
+            - default mechanism
+            - **vpn** network service
+            - **if-vpn** kernel interface
+        - kernel://secure-proxy@cloud2.com/if-proxy?username=jdoe&password=123456
+            - **kernel** mechanism
+            - **secure-proxy** network service at **cloud2.com**
+            - **if-proxy** kernel interface
+            - **{ username: "jdoe", password: "123456" }** request parameters
+        - vfio://l2-controller/?capability=1G
+            - **vfio** mechanism
+            - **l2-controller** network service
+            - **{ capability: "1G" }** request parameters
+        
 
 # Build
 

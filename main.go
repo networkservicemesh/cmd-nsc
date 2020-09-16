@@ -20,16 +20,18 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"net/url"
 	"os"
-	"path"
+	"reflect"
+	"regexp"
 	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
@@ -37,21 +39,22 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
-	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
-	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
-	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
-
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
-	"github.com/networkservicemesh/cmd-nsc/pkg/config"
+	kernelmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	vfiomech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
+	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/mechanisms/vfio"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
+	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/jaeger"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/signalctx"
+	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
+	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
+
+	"github.com/networkservicemesh/cmd-nsc/pkg/config"
 )
 
 func main() {
@@ -171,48 +174,51 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		return []*networkservice.Connection{}, err
 	}
 
+	var requestConfigs []*requestConfig
+	for i := range rootConf.NetworkServices {
+		nsConf := &rootConf.NetworkServices[i]
+		err := nsConf.MergeWithConfigOptions(rootConf)
+		if err != nil {
+			logrus.Errorf("error during nsmClient config aggregation %v", err)
+			return []*networkservice.Connection{}, err
+		}
+		requestConfigs = appendNSConf(nsConf, requestConfigs)
+	}
+
 	// ********************************************************************************
 	// Initiate connections
 	// ********************************************************************************
 
 	// A list of cleanup operations
 	var connections []*networkservice.Connection
-
-	for idx, clientConf := range rootConf.NetworkServices {
-		err := clientConf.MergeWithConfigOptions(rootConf)
-		if err != nil {
-			log.Entry(ctx).Errorf("error during nsmClient config aggregation %v", err)
-			return connections, err
+	for _, requestConfig := range requestConfigs {
+		var clients []networkservice.NetworkServiceClient
+		for _, nsConf := range requestConfig.nsConfs {
+			switch nsConf.Mechanism {
+			case kernelmech.MECHANISM:
+				clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(nsConf.Path[0])))
+			case vfiomech.MECHANISM:
+				cgroupDir, err := cgroupDirPath()
+				if err != nil {
+					log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err)
+					return connections, err
+				}
+				clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
+			}
 		}
-		// We need update
-		outgoingMechanism := &networkservice.Mechanism{
-			Cls:        cls.LOCAL,
-			Type:       clientConf.Mechanism,
-			Parameters: map[string]string{},
-		}
-		switch clientConf.Mechanism {
-		case kernel.MECHANISM:
-			outgoingMechanism.Parameters[common.InterfaceNameKey] = clientConf.Path[0]
-			fileURL := &url.URL{Scheme: "file", Path: "/proc/self/ns/net"}
-			kernel.ToMechanism(outgoingMechanism).SetNetNSURL(fileURL.String())
-
-		case memif.MECHANISM:
-			outgoingMechanism.Parameters[memif.SocketFilename] = path.Join(clientConf.Path...)
-		}
+		clients = append(clients, nsmClient)
 
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
 			Connection: &networkservice.Connection{
-				NetworkService: clientConf.NetworkService,
-				Id:             fmt.Sprintf("%s-%d", rootConf.Name, idx),
-			},
-			MechanismPreferences: []*networkservice.Mechanism{
-				outgoingMechanism,
+				Id:             fmt.Sprintf("%s-%d", rootConf.Name, len(connections)),
+				NetworkService: requestConfig.nsName,
+				Labels:         requestConfig.labels,
 			},
 		}
 
 		// Performing nsmClient connection request
-		conn, connerr := nsmClient.Request(ctx, request)
+		conn, connerr := chain.NewNetworkServiceClient(clients...).Request(ctx, request)
 		if connerr != nil {
 			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, connerr)
 			return connections, connerr
@@ -223,4 +229,40 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		connections = append(connections, conn)
 	}
 	return connections, nil
+}
+
+type requestConfig struct {
+	nsName  string
+	labels  map[string]string
+	nsConfs []*config.NetworkServiceConfig
+}
+
+func appendNSConf(nsConf *config.NetworkServiceConfig, requestConfigs []*requestConfig) []*requestConfig {
+	for _, requestConfig := range requestConfigs {
+		if requestConfig.nsName == nsConf.NetworkService && reflect.DeepEqual(requestConfig.labels, nsConf.Labels) {
+			requestConfig.nsConfs = append(requestConfig.nsConfs, nsConf)
+			return requestConfigs
+		}
+	}
+	return append(requestConfigs, &requestConfig{
+		nsName:  nsConf.NetworkService,
+		labels:  nsConf.Labels,
+		nsConfs: []*config.NetworkServiceConfig{nsConf},
+	})
+}
+
+var devicesCgroup = regexp.MustCompile("^[1-9][0-9]*?:devices:(.*)$")
+
+func cgroupDirPath() (string, error) {
+	cgroupInfo, err := os.OpenFile("/proc/self/cgroup", os.O_RDONLY, 0)
+	if err != nil {
+		return "", errors.Wrap(err, "error opening cgroup info file")
+	}
+	for scanner := bufio.NewScanner(cgroupInfo); scanner.Scan(); {
+		line := scanner.Text()
+		if devicesCgroup.MatchString(line) {
+			return devicesCgroup.FindStringSubmatch(line)[1], nil
+		}
+	}
+	return "", errors.New("can't find out cgroup directory")
 }
