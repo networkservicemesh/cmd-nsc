@@ -20,9 +20,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/edwarnicke/grpcfd"
+	"net/url"
 	"os"
 	"path"
-	"strconv"
 	"time"
 
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
@@ -38,7 +39,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
 	"github.com/networkservicemesh/cmd-nsc/pkg/config"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
-	"github.com/networkservicemesh/sdk/pkg/tools/fs"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 
@@ -145,8 +146,10 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	clientCC, err = grpc.DialContext(ctx,
 		grpcutils.URLToTarget(rootConf.ConnectTo),
 		grpc.WithTransportCredentials(
-			credentials.NewTLS(
-				tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()))),
+			grpcfd.TransportCredentials(
+				credentials.NewTLS(
+					tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()))),
+		),
 		grpc.WithDefaultCallOptions(
 			grpc.WaitForReady(true)))
 	if err != nil {
@@ -156,7 +159,14 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
-	return client.NewClient(ctx, rootConf.Name, nil, spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime), clientCC)
+	return client.NewClient(
+		ctx,
+		rootConf.Name,
+		nil,
+		spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
+		clientCC,
+		sendfd.NewClient(),
+	)
 }
 
 // RunClient - runs a client application with passed configuration over a client to Network Service Manager
@@ -185,17 +195,12 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 			Type:       clientConf.Mechanism,
 			Parameters: map[string]string{},
 		}
-
 		switch clientConf.Mechanism {
 		case kernel.MECHANISM:
 			outgoingMechanism.Parameters[common.InterfaceNameKey] = clientConf.Path[0]
-			inode, err := fs.GetInode("/proc/self/ns/net")
-			if err != nil {
-				logrus.Errorf("could not retrieve a linux namespace %v", err)
-				return connections, err
-			}
-			outgoingMechanism.Parameters[kernel.NetNSInodeKey] = strconv.FormatUint(uint64(inode), 10)
-			kernel.ToMechanism(outgoingMechanism).SetNetNSURL("unix:///proc/self/ns/net")
+			fileUrl := &url.URL{Scheme: "file", Path: "/proc/self/ns/net"}
+			logrus.Infof("Net ns URL: %v", fileUrl)
+			kernel.ToMechanism(outgoingMechanism).SetNetNSURL(fileUrl.String())
 
 		case memif.MECHANISM:
 			outgoingMechanism.Parameters[memif.SocketFilename] = path.Join(clientConf.Path...)

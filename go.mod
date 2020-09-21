@@ -6,12 +6,12 @@ require (
 	github.com/antonfisher/nested-logrus-formatter v1.1.0
 	github.com/golang/protobuf v1.4.2
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/networkservicemesh/api v0.0.0-20200813164503-9585b38e6772
-	github.com/networkservicemesh/sdk v0.0.0-20200813194707-0d4413ef1106
+	github.com/networkservicemesh/api v0.0.0-20200915182332-e5aee3ba99ef
+	github.com/networkservicemesh/sdk v0.0.0-20200921025830-c057c01651a1
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spiffe/go-spiffe/v2 v2.0.0-alpha.5
 	github.com/stretchr/testify v1.6.1
-	google.golang.org/grpc v1.31.0
+	google.golang.org/grpc v1.32.0
 )
