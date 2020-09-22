@@ -20,11 +20,12 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/edwarnicke/grpcfd"
 	"net/url"
 	"os"
 	"path"
 	"time"
+
+	"github.com/edwarnicke/grpcfd"
 
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
@@ -148,10 +149,12 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 		grpc.WithTransportCredentials(
 			grpcfd.TransportCredentials(
 				credentials.NewTLS(
-					tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()))),
+					tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()),
+				),
+			),
 		),
-		grpc.WithDefaultCallOptions(
-			grpc.WaitForReady(true)))
+		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
+	)
 	if err != nil {
 		logrus.Fatalf("failed to dial NSM: %v", err)
 	}
@@ -198,9 +201,8 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		switch clientConf.Mechanism {
 		case kernel.MECHANISM:
 			outgoingMechanism.Parameters[common.InterfaceNameKey] = clientConf.Path[0]
-			fileUrl := &url.URL{Scheme: "file", Path: "/proc/self/ns/net"}
-			logrus.Infof("Net ns URL: %v", fileUrl)
-			kernel.ToMechanism(outgoingMechanism).SetNetNSURL(fileUrl.String())
+			fileURL := &url.URL{Scheme: "file", Path: "/proc/self/ns/net"}
+			kernel.ToMechanism(outgoingMechanism).SetNetNSURL(fileURL.String())
 
 		case memif.MECHANISM:
 			outgoingMechanism.Parameters[memif.SocketFilename] = path.Join(clientConf.Path...)

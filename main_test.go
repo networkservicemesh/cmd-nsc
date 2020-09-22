@@ -20,6 +20,12 @@ import (
 	"context"
 	"net/url"
 	"testing"
+	"time"
+
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/require"
@@ -47,7 +53,22 @@ func (n *nsmTestClient) Close(ctx context.Context, in *networkservice.Connection
 	return nil, nil
 }
 
+type checkConnectionClient struct {
+	*testing.T
+	check func(*testing.T, context.Context, *networkservice.NetworkServiceRequest)
+}
+
+func (c *checkConnectionClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
+	c.check(c.T, ctx, request)
+	return next.Server(ctx).Request(ctx, request)
+}
+
+func (c *checkConnectionClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
+	return next.Server(ctx).Close(ctx, conn)
+}
+
 var _ networkservice.NetworkServiceClient = (*nsmTestClient)(nil)
+var _ networkservice.NetworkServiceClient = (*checkConnectionClient)(nil)
 
 func parse(t *testing.T, u string) *config.NetworkServiceConfig {
 	c := &config.NetworkServiceConfig{}
@@ -128,6 +149,40 @@ func TestConnectNSMGRPC(t *testing.T) {
 			parse(t, "kernel://my-service/nsmKernel?"),
 		},
 	}
+	conns, err := main.RunClient(ctx, cfg, testClient)
+	require.NoError(t, err)
+	require.NotNil(t, conns)
+	require.Equal(t, 1, len(conns))
+}
+
+func TestSendFd(t *testing.T) {
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*20))
+	defer cancel()
+
+	testClient := chain.NewNetworkServiceClient(
+		sendfd.NewClient(),
+		&checkConnectionClient{
+			T: t,
+			check: func(t *testing.T, ctx context.Context, request *networkservice.NetworkServiceRequest) {
+				preferences := request.GetMechanismPreferences()
+				require.NotNil(t, preferences)
+				require.Equal(t, 1, len(preferences))
+				inodeURLString := preferences[0].GetParameters()[common.InodeURL]
+				inodeURL, err := url.Parse(inodeURLString)
+				require.NoError(t, err)
+				require.Equal(t, "inode", inodeURL.Scheme)
+			},
+		},
+	)
+
+	cfg := &config.Config{
+		Name:      "nsc",
+		ConnectTo: &url.URL{Scheme: "tcp", Host: "127.0.0.1:0"},
+		NetworkServices: []*config.NetworkServiceConfig{
+			parse(t, "kernel://my-service/nsmKernel?"),
+		},
+	}
+
 	conns, err := main.RunClient(ctx, cfg, testClient)
 	require.NoError(t, err)
 	require.NotNil(t, conns)
