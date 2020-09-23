@@ -36,7 +36,7 @@ var configMechanisms = map[string]string{
 // Config - configuration for cmd-nsmgr
 type Config struct {
 	Name             string        `default:"nsc" desc:"Name of Network Service Client"`
-	ConnectTo        *url.URL      `default:"[unix:///var/lib/networkservicemesh/nsm.io.sock" desc:"url to connect to NSM" split_words:"true"`
+	ConnectTo        *url.URL      `default:"unix:///var/lib/networkservicemesh/nsm.io.sock" desc:"url to connect to NSM" split_words:"true"`
 	MaxTokenLifetime time.Duration `default:"24h" desc:"maximum lifetime of tokens" split_words:"true"`
 
 	Routes    []string `default:"" desc:"A list of routes asked by client" split_words:"true"`
