@@ -122,7 +122,7 @@ func TestConnectNSM(t *testing.T) {
 	testClient := &nsmTestClient{}
 	cfg := &config.Config{
 		Name: "nsc",
-		ConnectTo: &url.URL{
+		ConnectTo: url.URL{
 			Scheme: "unix",
 			Path:   "/file.sock",
 		},
@@ -143,7 +143,7 @@ func TestConnectNSMGRPC(t *testing.T) {
 	testClient := &nsmTestClient{}
 	cfg := &config.Config{
 		Name: "nsc",
-		ConnectTo: &url.URL{
+		ConnectTo: url.URL{
 			Scheme: "unix",
 			Path:   "/file.sock",
 		},
@@ -179,7 +179,7 @@ func TestSendFd(t *testing.T) {
 
 	cfg := &config.Config{
 		Name:      "nsc",
-		ConnectTo: &url.URL{Scheme: "tcp", Host: "127.0.0.1:0"},
+		ConnectTo: url.URL{Scheme: "tcp", Host: "127.0.0.1:0"},
 		NetworkServices: []*config.NetworkServiceConfig{
 			parse(t, "kernel://my-service/nsmKernel?"),
 		},

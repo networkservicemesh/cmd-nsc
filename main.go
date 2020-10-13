@@ -27,6 +27,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
+
 	"github.com/edwarnicke/grpcfd"
 
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
@@ -42,7 +44,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
 	"github.com/networkservicemesh/cmd-nsc/pkg/config"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 
@@ -147,7 +148,7 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	logrus.Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
 	var clientCC *grpc.ClientConn
 	clientCC, err = grpc.DialContext(ctx,
-		grpcutils.URLToTarget(rootConf.ConnectTo),
+		grpcutils.URLToTarget(&rootConf.ConnectTo),
 		grpc.WithTransportCredentials(
 			grpcfd.TransportCredentials(
 				credentials.NewTLS(
@@ -177,7 +178,7 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 // RunClient - runs a client application with passed configuration over a client to Network Service Manager
 func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkservice.NetworkServiceClient) ([]*networkservice.Connection, error) {
 	// Validate config parameters
-	if err := rootConf.Validate(); err != nil {
+	if err := rootConf.IsValid(); err != nil {
 		return []*networkservice.Connection{}, err
 	}
 

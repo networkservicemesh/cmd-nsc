@@ -36,7 +36,7 @@ var configMechanisms = map[string]string{
 // Config - configuration for cmd-nsmgr
 type Config struct {
 	Name             string        `default:"nsc" desc:"Name of Network Service Client"`
-	ConnectTo        *url.URL      `default:"unix:///var/lib/networkservicemesh/nsm.io.sock" desc:"url to connect to NSM" split_words:"true"`
+	ConnectTo        url.URL       `default:"unix:///var/lib/networkservicemesh/nsm.io.sock" desc:"url to connect to NSM" split_words:"true"`
 	MaxTokenLifetime time.Duration `default:"24h" desc:"maximum lifetime of tokens" split_words:"true"`
 
 	Routes    []string `default:"" desc:"A list of routes asked by client" split_words:"true"`
@@ -46,15 +46,15 @@ type Config struct {
 	NetworkServices []*NetworkServiceConfig `default:"" desc:"A list of Network Service Requests with format [{mechanism}]?:${nsName}[@domainName]?/${interfaceName/memIfSocketName}?${label1}=${value1}&${label2}=${value2}" split_words:"true"`
 }
 
-// Validate - check if configuration is valid
-func (c *Config) Validate() error {
+// IsValid - check if configuration is valid
+func (c *Config) IsValid() error {
 	if len(c.NetworkServices) == 0 {
 		return errors.New("no network services are specified")
 	}
 	if c.Name == "" {
 		return errors.New("no cleint name specified")
 	}
-	if c.ConnectTo == nil {
+	if c.ConnectTo.String() == "" {
 		return errors.New("no NSMGr ConnectTO URL are sepecified")
 	}
 	return nil
@@ -100,8 +100,8 @@ func (cfg *NetworkServiceConfig) UnmarshalBinary(text []byte) error {
 	return nil
 }
 
-// Validate - check if network service request is correct.
-func (cfg *NetworkServiceConfig) Validate() error {
+// IsValid - check if network service request is correct.
+func (cfg *NetworkServiceConfig) IsValid() error {
 	if cfg.Mechanism == "" {
 		return errors.New("invalid mechanism specified")
 	}
@@ -149,5 +149,5 @@ func (cfg *NetworkServiceConfig) MergeWithConfigOptions(conf *Config) error {
 			cfg.Labels[key] = strings.Trim(keyValue[1], " ")
 		}
 	}
-	return cfg.Validate()
+	return cfg.IsValid()
 }
