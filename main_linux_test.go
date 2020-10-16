@@ -43,8 +43,8 @@ func TestSendFd(t *testing.T) {
 	rootConf := &config.Config{
 		Name:      "nsc",
 		ConnectTo: url.URL{Scheme: "tcp", Host: "127.0.0.1:0"},
-		NetworkServices: []*config.NetworkServiceConfig{
-			parse(t, "kernel://my-service/nsmKernel?"),
+		NetworkServices: []config.NetworkServiceConfig{
+			*parse(t, "kernel://my-service/nsmKernel?"),
 		},
 	}
 

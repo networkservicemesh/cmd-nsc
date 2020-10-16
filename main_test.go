@@ -20,6 +20,7 @@ package main_test
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"testing"
@@ -30,12 +31,16 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
+	"github.com/networkservicemesh/sdk-sriov/pkg/tools/yamlhelper"
 
 	main "github.com/networkservicemesh/cmd-nsc"
 	"github.com/networkservicemesh/cmd-nsc/pkg/config"
+)
+
+const (
+	requestsFileName = "test/requests.yml"
 )
 
 func TestParseUrlsFromEnv(t *testing.T) {
@@ -111,6 +116,10 @@ func TestConnectNSM(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	var requests []*networkservice.NetworkServiceRequest
+	err := yamlhelper.UnmarshalFile(requestsFileName, &requests)
+	require.NoError(t, err)
+
 	rootConf := &config.Config{
 		Name: "nsc",
 		ConnectTo: url.URL{
@@ -127,75 +136,9 @@ func TestConnectNSM(t *testing.T) {
 
 	testClient := &nsmTestClient{}
 
-	_, err := main.RunClient(ctx, rootConf, testClient)
+	_, err = main.RunClient(ctx, rootConf, testClient)
 	require.NoError(t, err)
-	require.Equal(t, []*networkservice.NetworkServiceRequest{
-		{
-			Connection: &networkservice.Connection{
-				Id:             "nsc-0",
-				NetworkService: "my-service",
-				Labels: map[string]string{
-					"label-1": "value-1",
-				},
-			},
-			MechanismPreferences: []*networkservice.Mechanism{
-				{
-					Cls:  cls.LOCAL,
-					Type: kernel.MECHANISM,
-					Parameters: map[string]string{
-						kernel.NetNSURL:         "file:///proc/thread-self/ns/net",
-						kernel.InterfaceNameKey: "if-1",
-					},
-				},
-				{
-					Cls:  cls.LOCAL,
-					Type: kernel.MECHANISM,
-					Parameters: map[string]string{
-						kernel.NetNSURL:         "file:///proc/thread-self/ns/net",
-						kernel.InterfaceNameKey: "if-2",
-					},
-				},
-			},
-		},
-		{
-			Connection: &networkservice.Connection{
-				Id:             "nsc-1",
-				NetworkService: "my-service",
-				Labels: map[string]string{
-					"label-2": "value-2",
-				},
-			},
-			MechanismPreferences: []*networkservice.Mechanism{
-				{
-					Cls:  cls.LOCAL,
-					Type: kernel.MECHANISM,
-					Parameters: map[string]string{
-						kernel.NetNSURL:         "file:///proc/thread-self/ns/net",
-						kernel.InterfaceNameKey: "if-3",
-					},
-				},
-			},
-		},
-		{
-			Connection: &networkservice.Connection{
-				Id:             "nsc-2",
-				NetworkService: "service",
-				Labels: map[string]string{
-					"label-2": "value-2",
-				},
-			},
-			MechanismPreferences: []*networkservice.Mechanism{
-				{
-					Cls:  cls.LOCAL,
-					Type: kernel.MECHANISM,
-					Parameters: map[string]string{
-						kernel.NetNSURL:         "file:///proc/thread-self/ns/net",
-						kernel.InterfaceNameKey: "if-4",
-					},
-				},
-			},
-		},
-	}, testClient.requests)
+	require.Equal(t, fmt.Sprint(requests), fmt.Sprint(testClient.requests))
 }
 
 func parse(t *testing.T, u string) *config.NetworkServiceConfig {

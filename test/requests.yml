@@ -1,0 +1,39 @@
+---
+- connection:
+    id: nsc-0
+    network_service: my-service
+    labels:
+      label-1: value-1
+  mechanism_preferences:
+    - cls: LOCAL
+      type: KERNEL_INTERFACE
+      parameters:
+        inodeURL: file:///proc/thread-self/ns/net
+        name: if-1
+    - cls: LOCAL
+      type: KERNEL_INTERFACE
+      parameters:
+        inodeURL: file:///proc/thread-self/ns/net
+        name: if-2
+- connection:
+    id: nsc-1
+    network_service: my-service
+    labels:
+      label-2: value-2
+  mechanism_preferences:
+    - cls: LOCAL
+      type: KERNEL_INTERFACE
+      parameters:
+        inodeURL: file:///proc/thread-self/ns/net
+        name: if-3
+- connection:
+    id: nsc-2
+    network_service: service
+    labels:
+      label-2: value-2
+  mechanism_preferences:
+    - cls: LOCAL
+      type: KERNEL_INTERFACE
+      parameters:
+        inodeURL: file:///proc/thread-self/ns/net
+        name: if-4

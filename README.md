@@ -16,11 +16,12 @@ This README will provide directions for building, testing, and debugging that co
 * NSM_MECHANISM - Default Mechanism to use, supported values "kernel", "vfio"
 * NSM_NETWORK_SERVICES - A list of Network Service Requests URLs with inner format 
     - \[kernel://]nsName\[@domainName]/interfaceName?\[label1=value1\*(&labelN=valueN)]
-    - \[vfio://]nsName\[@domainName]/?\[label1=value1\*(&labelN=valueN)]
+    - \[vfio://]nsName\[@domainName]?\[label1=value1\*(&labelN=valueN)]
         - nsName - a Network service name requested
         - domainName - an interdomain service name
         - interfaceName - a kernel interface name, for kernel mechanism
-        - labelN/valueN - pairs of labels will be passed as a part of the request.
+        - labelN=valueN - pairs of labels will be passed as a part of the request:
+            - sriovToken=service.domain/capability - required label for SR-IOV mechanisms
     - Examples:
         - vpn/if-vpn
             - default mechanism
@@ -31,10 +32,10 @@ This README will provide directions for building, testing, and debugging that co
             - **secure-proxy** network service at **cloud2.com**
             - **if-proxy** kernel interface
             - **{ username: "jdoe", password: "123456" }** request parameters
-        - vfio://l2-controller/?capability=1G
+        - vfio://l2-controller?sriovToken=l2.domain/1G
             - **vfio** mechanism
             - **l2-controller** network service
-            - **{ capability: "1G" }** request parameters
+            - **{ sriovToken: "l2.domain/1G" }** request parameters
         
 
 # Build

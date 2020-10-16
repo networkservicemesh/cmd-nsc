@@ -43,6 +43,7 @@ import (
 	kernelmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	vfiomech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/mechanisms/vfio"
+	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/token"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
@@ -93,8 +94,9 @@ func main() {
 		log.Entry(ctx).Fatalf("error processing rootConf from env: %+v", err)
 	}
 
-	nsmClient := NewNSMClient(ctx, rootConf)
-	connections, err := RunClient(ctx, rootConf, nsmClient)
+	log.Entry(ctx).Infof("rootConf: %+v", rootConf)
+
+	connections, err := RunClient(ctx, rootConf, NewNSMClient(ctx, rootConf))
 	if err != nil {
 		log.Entry(ctx).Errorf("failed to connect to network services: %v", err.Error())
 	} else {
@@ -104,12 +106,13 @@ func main() {
 	// Wait for cancel event to terminate
 	<-ctx.Done()
 
-	logrus.Infof("Performing cleanup of connections due terminate...")
+	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
 	for _, c := range connections {
-		_, err := nsmClient.Close(context.Background(), c)
+		_, err := c.Client.Close(context.Background(), c.Connection)
 		if err != nil {
-			logrus.Infof("Failed to close connection %v cause: %v", c, err)
+			log.Entry(ctx).Infof("Failed to close connection %v cause: %v", c.Connection, err)
 		}
+		c.Cancel()
 	}
 }
 
@@ -132,13 +135,13 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	// ********************************************************************************
 	// Connect to NSManager
 	// ********************************************************************************
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+	connectCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	log.Entry(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
 	var clientCC *grpc.ClientConn
-	clientCC, err = grpc.DialContext(ctx,
+	clientCC, err = grpc.DialContext(
+		connectCtx,
 		grpcutils.URLToTarget(&rootConf.ConnectTo),
 		append(spanhelper.WithTracingDial(),
 			grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
@@ -164,23 +167,30 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 		spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
 		clientCC,
 		sendfd.NewClient(),
+		token.NewClient(),
 	)
 }
 
+// Connection is a return type for RunClient
+type Connection struct {
+	Client     networkservice.NetworkServiceClient
+	Connection *networkservice.Connection
+	Cancel     context.CancelFunc
+}
+
 // RunClient - runs a client application with passed configuration over a client to Network Service Manager
-func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkservice.NetworkServiceClient) ([]*networkservice.Connection, error) {
+func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkservice.NetworkServiceClient) ([]*Connection, error) {
 	// Validate config parameters
 	if err := rootConf.IsValid(); err != nil {
-		return []*networkservice.Connection{}, err
+		return nil, err
 	}
 
 	var requestConfigs []*requestConfig
 	for i := range rootConf.NetworkServices {
 		nsConf := &rootConf.NetworkServices[i]
-		err := nsConf.MergeWithConfigOptions(rootConf)
-		if err != nil {
-			logrus.Errorf("error during nsmClient config aggregation %v", err)
-			return []*networkservice.Connection{}, err
+		if err := nsConf.MergeWithConfigOptions(rootConf); err != nil {
+			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err)
+			return nil, err
 		}
 		requestConfigs = appendNSConf(nsConf, requestConfigs)
 	}
@@ -190,7 +200,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 	// ********************************************************************************
 
 	// A list of cleanup operations
-	var connections []*networkservice.Connection
+	var connections []*Connection
 	for _, requestConfig := range requestConfigs {
 		var clients []networkservice.NetworkServiceClient
 		for _, nsConf := range requestConfig.nsConfs {
@@ -206,7 +216,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 				clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
 			}
 		}
-		clients = append(clients, nsmClient)
+		requestClient := chain.NewNetworkServiceClient(append(clients, nsmClient)...)
 
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
@@ -218,15 +228,21 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		}
 
 		// Performing nsmClient connection request
-		conn, connerr := chain.NewNetworkServiceClient(clients...).Request(ctx, request)
-		if connerr != nil {
-			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, connerr)
-			return connections, connerr
+		requestCtx, cancel := context.WithTimeout(ctx, 15*time.Minute) // timeout for healing
+		connection, err := requestClient.Request(requestCtx, request)
+		if err != nil {
+			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, err)
+			cancel()
+			return connections, err
 		}
 
-		log.Entry(ctx).Infof("Network service established with %v\n Connection:%v", request, conn)
+		log.Entry(ctx).Infof("Network service established with %v\n Connection:%v", request, connection)
 		// Add connection to list
-		connections = append(connections, conn)
+		connections = append(connections, &Connection{
+			Client:     requestClient,
+			Connection: connection,
+			Cancel:     cancel,
+		})
 	}
 	return connections, nil
 }
