@@ -21,8 +21,11 @@ package main_test
 import (
 	"context"
 	"net/url"
+	"os"
 	"testing"
 	"time"
+
+	"github.com/kelseyhightower/envconfig"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
@@ -72,11 +75,28 @@ func (c *checkConnectionClient) Close(ctx context.Context, conn *networkservice.
 var _ networkservice.NetworkServiceClient = (*nsmTestClient)(nil)
 var _ networkservice.NetworkServiceClient = (*checkConnectionClient)(nil)
 
-func parse(t *testing.T, u string) *config.NetworkServiceConfig {
-	c := &config.NetworkServiceConfig{}
+func parse(t *testing.T, u string) config.NetworkServiceConfig {
+	c := config.NetworkServiceConfig{}
 	err := c.UnmarshalBinary([]byte(u))
 	require.NoError(t, err)
 	return c
+}
+
+func TestParseUrlsFromEnv(t *testing.T) {
+	err := os.Setenv("NSM_NETWORK_SERVICES", "kernel://my-service/nsmKernel,memif://second-service/memif.sock?key=value")
+	require.NoError(t, err)
+
+	c := &config.Config{}
+	err = envconfig.Process("nsm", c)
+	require.NoError(t, err)
+
+	require.Equal(t, 2, len(c.NetworkServices))
+	require.Equal(t, kernel.MECHANISM, c.NetworkServices[0].Mechanism)
+	require.Equal(t, "nsmKernel", c.NetworkServices[0].Path[0])
+
+	require.Equal(t, memif.MECHANISM, c.NetworkServices[1].Mechanism)
+	require.Equal(t, "memif.sock", c.NetworkServices[1].Path[0])
+	require.Equal(t, "value", c.NetworkServices[1].Labels["key"])
 }
 
 func TestParseNSMUrl(t *testing.T) {
@@ -126,7 +146,7 @@ func TestConnectNSM(t *testing.T) {
 			Scheme: "unix",
 			Path:   "/file.sock",
 		},
-		NetworkServices: []*config.NetworkServiceConfig{
+		NetworkServices: []config.NetworkServiceConfig{
 			parse(t, "kernel://my-service/nsmKernel?"),
 		},
 	}
@@ -147,7 +167,7 @@ func TestConnectNSMGRPC(t *testing.T) {
 			Scheme: "unix",
 			Path:   "/file.sock",
 		},
-		NetworkServices: []*config.NetworkServiceConfig{
+		NetworkServices: []config.NetworkServiceConfig{
 			parse(t, "kernel://my-service/nsmKernel?"),
 		},
 	}
@@ -180,7 +200,7 @@ func TestSendFd(t *testing.T) {
 	cfg := &config.Config{
 		Name:      "nsc",
 		ConnectTo: url.URL{Scheme: "tcp", Host: "127.0.0.1:0"},
-		NetworkServices: []*config.NetworkServiceConfig{
+		NetworkServices: []config.NetworkServiceConfig{
 			parse(t, "kernel://my-service/nsmKernel?"),
 		},
 	}

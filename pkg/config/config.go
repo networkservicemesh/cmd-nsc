@@ -43,7 +43,7 @@ type Config struct {
 	Labels    []string `default:"" desc:"A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services" split_words:"true"`
 	Mechanism string   `default:"kernel" desc:"Default Mechanism to use, supported values kernel,memif" split_words:"true"`
 
-	NetworkServices []*NetworkServiceConfig `default:"" desc:"A list of Network Service Requests with format [{mechanism}]?:${nsName}[@domainName]?/${interfaceName/memIfSocketName}?${label1}=${value1}&${label2}=${value2}" split_words:"true"`
+	NetworkServices []NetworkServiceConfig `default:"" desc:"A list of Network Service Requests with format [{mechanism}]?:${nsName}[@domainName]?/${interfaceName/memIfSocketName}?${label1}=${value1}&${label2}=${value2}" split_words:"true"`
 }
 
 // IsValid - check if configuration is valid
