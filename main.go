@@ -22,6 +22,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/opentracing/opentracing-go"
 	"net/url"
 	"os"
 	"path"
@@ -29,14 +30,8 @@ import (
 
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 
-	"github.com/edwarnicke/grpcfd"
-
-	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
-	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
-	"github.com/spiffe/go-spiffe/v2/workloadapi"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
-
+	nested "github.com/antonfisher/nested-logrus-formatter"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
@@ -44,18 +39,11 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
 	"github.com/networkservicemesh/cmd-nsc/pkg/config"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
-	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
-	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
-
-	nested "github.com/antonfisher/nested-logrus-formatter"
-	"github.com/kelseyhightower/envconfig"
-	"github.com/opentracing/opentracing-go"
-	"github.com/sirupsen/logrus"
-
 	"github.com/networkservicemesh/sdk/pkg/tools/jaeger"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/signalctx"
 	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -79,32 +67,29 @@ func main() {
 	// ********************************************************************************
 	// Configure open tracing
 	// ********************************************************************************
-	var span opentracing.Span
 	// Enable Jaeger
-	if jaeger.IsOpentracingEnabled() {
-		jaegerCloser := jaeger.InitJaeger("nsc")
-		defer func() { _ = jaegerCloser.Close() }()
-		span = opentracing.StartSpan("nsc")
-	}
-	cmdSpan := spanhelper.NewSpanHelper(ctx, span, "nsc")
+	jaegerCloser := jaeger.InitJaeger("nsc")
+	defer func() { _ = jaegerCloser.Close() }()
 
+	cmdSpan := spanhelper.FromContext(ctx, "Init nsc")
+	logger := cmdSpan.Logger()
 	// ********************************************************************************
 	// Get config from environment
 	// ********************************************************************************
 	rootConf := &config.Config{}
 	if err := envconfig.Usage("nsm", rootConf); err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
 	if err := envconfig.Process("nsm", rootConf); err != nil {
-		logrus.Fatalf("error processing rootConf from env: %+v", err)
+		logger.Fatalf("error processing rootConf from env: %+v", err)
 	}
 
 	nsmClient := NewNSMClient(ctx, rootConf)
 	connections, err := RunClient(cmdSpan.Context(), rootConf, nsmClient)
 	if err != nil {
-		logrus.Errorf("failed to connect to network services")
+		logger.Errorf("failed to connect to network services")
 	} else {
-		logrus.Infof("All client init operations are done.")
+		logger.Infof("All client init operations are done.")
 	}
 
 	// Startup is finished
@@ -127,16 +112,16 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	// ********************************************************************************
 	// Get a x509Source
 	// ********************************************************************************
-	source, err := workloadapi.NewX509Source(ctx)
-	if err != nil {
-		logrus.Fatalf("error getting x509 source: %+v", err)
-	}
-	var svid *x509svid.SVID
-	svid, err = source.GetX509SVID()
-	if err != nil {
-		logrus.Fatalf("error getting x509 svid: %+v", err)
-	}
-	logrus.Infof("sVID: %q", svid.ID)
+	//source, err := workloadapi.NewX509Source(ctx)
+	//if err != nil {
+	//	logrus.Fatalf("error getting x509 source: %+v", err)
+	//}
+	//var svid *x509svid.SVID
+	//svid, err = source.GetX509SVID()
+	//if err != nil {
+	//	logrus.Fatalf("error getting x509 svid: %+v", err)
+	//}
+	//logrus.Infof("sVID: %q", svid.ID)
 
 	// ********************************************************************************
 	// Connect to NSManager
@@ -146,21 +131,22 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	defer cancel()
 
 	logrus.Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
-	var clientCC *grpc.ClientConn
-	clientCC, err = grpc.DialContext(ctx,
-		grpcutils.URLToTarget(&rootConf.ConnectTo),
-		grpc.WithTransportCredentials(
-			grpcfd.TransportCredentials(
-				credentials.NewTLS(
-					tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()),
-				),
-			),
-		),
-		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
-	)
-	if err != nil {
-		logrus.Fatalf("failed to dial NSM: %v", err)
-	}
+	//var clientCC *grpc.ClientConn
+	//clientCC, err = grpc.DialContext(ctx,
+	//	grpcutils.URLToTarget(&rootConf.ConnectTo),
+	//	append(spanhelper.WithTracingDial(),
+	//		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
+	//		grpc.WithTransportCredentials(
+	//			grpcfd.TransportCredentials(
+	//				credentials.NewTLS(
+	//					tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()),
+	//				),
+	//			),
+	//		))...
+	//)
+	//if err != nil {
+	//	logrus.Fatalf("failed to dial NSM: %v", err)
+	//}
 
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
@@ -169,14 +155,19 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 		ctx,
 		rootConf.Name,
 		nil,
-		spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
-		clientCC,
+		//spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
+		nil,
+		//clientCC,
+		nil,
 		sendfd.NewClient(),
 	)
 }
 
 // RunClient - runs a client application with passed configuration over a client to Network Service Manager
 func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkservice.NetworkServiceClient) ([]*networkservice.Connection, error) {
+	span := spanhelper.FromContext(ctx, "Run nsc")
+	logger := span.Logger()
+
 	// Validate config parameters
 	if err := rootConf.IsValid(); err != nil {
 		return []*networkservice.Connection{}, err
@@ -192,7 +183,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 	for idx, clientConf := range rootConf.NetworkServices {
 		err := clientConf.MergeWithConfigOptions(rootConf)
 		if err != nil {
-			logrus.Errorf("error during nsmClient config aggregation %v", err)
+			logger.Errorf("error during nsmClient config aggregation %v", err)
 			return connections, err
 		}
 		// We need update
@@ -221,14 +212,15 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 			},
 		}
 
+		ctx = opentracing.ContextWithSpan(ctx, span.Span())
 		// Performing nsmClient connection request
 		conn, connerr := nsmClient.Request(ctx, request)
 		if connerr != nil {
-			logrus.Errorf("Failed to request network service with %v: err %v", request, connerr)
+			logger.Errorf("Failed to request network service with %v: err %v", request, connerr)
 			return connections, connerr
 		}
 
-		logrus.Infof("Network service established with %v\n Connection:%v", request, conn)
+		logger.Infof("Network service established with %v\n Connection:%v", request, conn)
 
 		// Add connection to list
 		connections = append(connections, conn)
