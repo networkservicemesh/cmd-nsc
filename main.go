@@ -27,15 +27,20 @@ import (
 	"path"
 	"time"
 
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
-
+	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
-
+	"github.com/kelseyhightower/envconfig"
+	"github.com/sirupsen/logrus"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
+	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
+	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
+	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
@@ -44,18 +49,9 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
 	"github.com/networkservicemesh/cmd-nsc/pkg/config"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
-	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
-	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
-
-	nested "github.com/antonfisher/nested-logrus-formatter"
-	"github.com/kelseyhightower/envconfig"
-	"github.com/opentracing/opentracing-go"
-	"github.com/sirupsen/logrus"
-
 	"github.com/networkservicemesh/sdk/pkg/tools/jaeger"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/signalctx"
-	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
 )
 
 func main() {
@@ -79,36 +75,28 @@ func main() {
 	// ********************************************************************************
 	// Configure open tracing
 	// ********************************************************************************
-	var span opentracing.Span
 	// Enable Jaeger
-	if jaeger.IsOpentracingEnabled() {
-		jaegerCloser := jaeger.InitJaeger("nsc")
-		defer func() { _ = jaegerCloser.Close() }()
-		span = opentracing.StartSpan("nsc")
-	}
-	cmdSpan := spanhelper.NewSpanHelper(ctx, span, "nsc")
+	jaegerCloser := jaeger.InitJaeger("nsc")
+	defer func() { _ = jaegerCloser.Close() }()
 
 	// ********************************************************************************
 	// Get config from environment
 	// ********************************************************************************
 	rootConf := &config.Config{}
 	if err := envconfig.Usage("nsm", rootConf); err != nil {
-		logrus.Fatal(err)
+		log.Entry(ctx).Fatal(err)
 	}
 	if err := envconfig.Process("nsm", rootConf); err != nil {
-		logrus.Fatalf("error processing rootConf from env: %+v", err)
+		log.Entry(ctx).Fatalf("error processing rootConf from env: %+v", err)
 	}
 
 	nsmClient := NewNSMClient(ctx, rootConf)
-	connections, err := RunClient(cmdSpan.Context(), rootConf, nsmClient)
+	connections, err := RunClient(ctx, rootConf, nsmClient)
 	if err != nil {
-		logrus.Errorf("failed to connect to network services")
+		log.Entry(ctx).Errorf("failed to connect to network services")
 	} else {
-		logrus.Infof("All client init operations are done.")
+		log.Entry(ctx).Infof("All client init operations are done.")
 	}
-
-	// Startup is finished
-	cmdSpan.Finish()
 
 	// Wait for cancel event to terminate
 	<-ctx.Done()
@@ -129,14 +117,14 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	// ********************************************************************************
 	source, err := workloadapi.NewX509Source(ctx)
 	if err != nil {
-		logrus.Fatalf("error getting x509 source: %+v", err)
+		log.Entry(ctx).Fatalf("error getting x509 source: %+v", err)
 	}
 	var svid *x509svid.SVID
 	svid, err = source.GetX509SVID()
 	if err != nil {
-		logrus.Fatalf("error getting x509 svid: %+v", err)
+		log.Entry(ctx).Fatalf("error getting x509 svid: %+v", err)
 	}
-	logrus.Infof("sVID: %q", svid.ID)
+	log.Entry(ctx).Infof("sVID: %q", svid.ID)
 
 	// ********************************************************************************
 	// Connect to NSManager
@@ -145,21 +133,22 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	logrus.Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
+	log.Entry(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
 	var clientCC *grpc.ClientConn
 	clientCC, err = grpc.DialContext(ctx,
 		grpcutils.URLToTarget(&rootConf.ConnectTo),
-		grpc.WithTransportCredentials(
-			grpcfd.TransportCredentials(
-				credentials.NewTLS(
-					tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()),
+		append(spanhelper.WithTracingDial(),
+			grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
+			grpc.WithTransportCredentials(
+				grpcfd.TransportCredentials(
+					credentials.NewTLS(
+						tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()),
+					),
 				),
-			),
-		),
-		grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
+			))...,
 	)
 	if err != nil {
-		logrus.Fatalf("failed to dial NSM: %v", err)
+		log.Entry(ctx).Fatalf("failed to dial NSM: %v", err)
 	}
 
 	// ********************************************************************************
@@ -192,7 +181,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 	for idx, clientConf := range rootConf.NetworkServices {
 		err := clientConf.MergeWithConfigOptions(rootConf)
 		if err != nil {
-			logrus.Errorf("error during nsmClient config aggregation %v", err)
+			log.Entry(ctx).Errorf("error during nsmClient config aggregation %v", err)
 			return connections, err
 		}
 		// We need update
@@ -224,12 +213,11 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		// Performing nsmClient connection request
 		conn, connerr := nsmClient.Request(ctx, request)
 		if connerr != nil {
-			logrus.Errorf("Failed to request network service with %v: err %v", request, connerr)
+			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, connerr)
 			return connections, connerr
 		}
 
-		logrus.Infof("Network service established with %v\n Connection:%v", request, conn)
-
+		log.Entry(ctx).Infof("Network service established with %v\n Connection:%v", request, conn)
 		// Add connection to list
 		connections = append(connections, conn)
 	}
