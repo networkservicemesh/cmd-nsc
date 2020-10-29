@@ -13,5 +13,7 @@ require (
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spiffe/go-spiffe/v2 v2.0.0-alpha.5
 	github.com/stretchr/testify v1.6.1
+	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	google.golang.org/genproto v0.0.0-20200615140333-fd031eab31e7 // indirect
 	google.golang.org/grpc v1.32.0
 )
