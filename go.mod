@@ -7,8 +7,8 @@ require (
 	github.com/edwarnicke/grpcfd v0.0.0-20200920223154-d5b6e1f19bd0
 	github.com/golang/protobuf v1.4.3
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/networkservicemesh/api v0.0.0-20201026112722-9b20186587a5
-	github.com/networkservicemesh/sdk v0.0.0-20201106151841-39537ac8948d
+	github.com/networkservicemesh/api v0.0.0-20201108204718-89d65b3605cf
+	github.com/networkservicemesh/sdk v0.0.0-20201108205456-6cb6021c406e
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spiffe/go-spiffe/v2 v2.0.0-alpha.5
