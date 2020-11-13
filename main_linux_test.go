@@ -33,7 +33,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 
 	main "github.com/networkservicemesh/cmd-nsc"
-	"github.com/networkservicemesh/cmd-nsc/pkg/config"
+	"github.com/networkservicemesh/cmd-nsc/internal/config"
 )
 
 func TestSendFd(t *testing.T) {

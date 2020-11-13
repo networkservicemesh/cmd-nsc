@@ -55,7 +55,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 
-	"github.com/networkservicemesh/cmd-nsc/pkg/config"
+	"github.com/networkservicemesh/cmd-nsc/internal/config"
 )
 
 func main() {

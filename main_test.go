@@ -36,7 +36,7 @@ import (
 	"github.com/networkservicemesh/sdk-sriov/pkg/tools/yamlhelper"
 
 	main "github.com/networkservicemesh/cmd-nsc"
-	"github.com/networkservicemesh/cmd-nsc/pkg/config"
+	"github.com/networkservicemesh/cmd-nsc/internal/config"
 )
 
 const (
