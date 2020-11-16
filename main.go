@@ -93,7 +93,7 @@ func main() {
 	nsmClient := NewNSMClient(ctx, rootConf)
 	connections, err := RunClient(ctx, rootConf, nsmClient)
 	if err != nil {
-		log.Entry(ctx).Errorf("failed to connect to network services")
+		log.Entry(ctx).Errorf("failed to connect to network services: %v", err.Error())
 	} else {
 		log.Entry(ctx).Infof("All client init operations are done.")
 	}
@@ -176,7 +176,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 	// ********************************************************************************
 
 	// A list of cleanup operations
-	connections := []*networkservice.Connection{}
+	var connections []*networkservice.Connection
 
 	for idx, clientConf := range rootConf.NetworkServices {
 		err := clientConf.MergeWithConfigOptions(rootConf)
@@ -203,7 +203,8 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
 			Connection: &networkservice.Connection{
-				Id: fmt.Sprintf("%s-%d", rootConf.Name, idx),
+				NetworkService: clientConf.NetworkService,
+				Id:             fmt.Sprintf("%s-%d", rootConf.Name, idx),
 			},
 			MechanismPreferences: []*networkservice.Mechanism{
 				outgoingMechanism,
