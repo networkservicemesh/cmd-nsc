@@ -46,7 +46,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/jaeger"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -166,23 +165,22 @@ func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...netw
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
-	nsmClient := client.NewClient(
-		ctx,
-		rootConf.Name,
-		nil,
-		spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
-		clientCC,
-	)
-
 	tokenClient := token.NewClient()
 	sendfdClient := sendfd.NewClient()
 
 	return func(additionalFunctionality ...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
-		return chain.NewNetworkServiceClient(append(append([]networkservice.NetworkServiceClient{
-			nsmClient},
-			additionalFunctionality...),
-			tokenClient,
-			sendfdClient)...)
+		return client.NewClient(
+			ctx,
+			rootConf.Name,
+			nil,
+			spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
+			clientCC,
+			append(
+				additionalFunctionality,
+				tokenClient,
+				sendfdClient,
+			)...,
+		)
 	}
 }
 
