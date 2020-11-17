@@ -110,7 +110,7 @@ func main() {
 	for _, c := range connections {
 		_, err := c.Client.Close(context.Background(), c.Connection)
 		if err != nil {
-			log.Entry(ctx).Infof("Failed to close connection %v cause: %v", c.Connection, err)
+			log.Entry(ctx).Warnf("Failed to close connection %v cause: %v", c.Connection, err.Error())
 		}
 		c.Cancel()
 	}
@@ -123,19 +123,19 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	// ********************************************************************************
 	source, err := workloadapi.NewX509Source(ctx)
 	if err != nil {
-		log.Entry(ctx).Fatalf("error getting x509 source: %+v", err)
+		log.Entry(ctx).Fatalf("error getting x509 source: %v", err.Error())
 	}
 	var svid *x509svid.SVID
 	svid, err = source.GetX509SVID()
 	if err != nil {
-		log.Entry(ctx).Fatalf("error getting x509 svid: %+v", err)
+		log.Entry(ctx).Fatalf("error getting x509 svid: %v", err.Error())
 	}
 	log.Entry(ctx).Infof("sVID: %q", svid.ID)
 
 	// ********************************************************************************
 	// Connect to NSManager
 	// ********************************************************************************
-	connectCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	connectCtx, cancel := context.WithTimeout(ctx, rootConf.ConnectTimeout)
 	defer cancel()
 
 	log.Entry(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
@@ -154,7 +154,7 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 			))...,
 	)
 	if err != nil {
-		log.Entry(ctx).Fatalf("failed to dial NSM: %v", err)
+		log.Entry(ctx).Fatalf("failed to dial NSM: %v", err.Error())
 	}
 
 	// ********************************************************************************
@@ -189,7 +189,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 	for i := range rootConf.NetworkServices {
 		nsConf := &rootConf.NetworkServices[i]
 		if err := nsConf.MergeWithConfigOptions(rootConf); err != nil {
-			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err)
+			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
 			return nil, err
 		}
 		requestConfigs = appendNSConf(nsConf, requestConfigs)
@@ -210,7 +210,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 			case vfiomech.MECHANISM:
 				cgroupDir, err := cgroupDirPath()
 				if err != nil {
-					log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err)
+					log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
 					return connections, err
 				}
 				clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
@@ -231,7 +231,7 @@ func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkse
 		requestCtx, cancel := context.WithTimeout(ctx, 15*time.Minute) // timeout for healing
 		connection, err := requestClient.Request(requestCtx, request)
 		if err != nil {
-			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, err)
+			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, err.Error())
 			cancel()
 			return connections, err
 		}

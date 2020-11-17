@@ -7,7 +7,7 @@ RUN go get github.com/edwarnicke/dl
 RUN dl https://github.com/spiffe/spire/releases/download/v0.11.1/spire-0.11.1-linux-x86_64-glibc.tar.gz | \
     tar -xzvf - -C /bin --strip=3 ./spire-0.11.1/bin/spire-server ./spire-0.11.1/bin/spire-agent
 
-FROM go  as build
+FROM go as build
 WORKDIR /build
 COPY . .
 RUN go build -o /bin/app .

@@ -37,6 +37,7 @@ var configMechanisms = map[string]string{
 type Config struct {
 	Name             string        `default:"nsc" desc:"Name of Network Service Client"`
 	ConnectTo        url.URL       `default:"unix:///var/lib/networkservicemesh/nsm.io.sock" desc:"url to connect to NSM" split_words:"true"`
+	ConnectTimeout   time.Duration `default:"5s" desc:"timeout to connect to NSMgr" split_words:"true"`
 	MaxTokenLifetime time.Duration `default:"24h" desc:"maximum lifetime of tokens" split_words:"true"`
 
 	Labels    []string `default:"" desc:"A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services" split_words:"true"`

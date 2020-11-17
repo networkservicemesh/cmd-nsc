@@ -10,7 +10,8 @@ This README will provide directions for building, testing, and debugging that co
 
 * NSM_NAME - A string value of network service client name (default "nsc")
 * NSM_CONNECT_TO - A Network service Manager connectTo URL (default "unix:///var/lib/networkservicemesh/nsm.io.sock")
-* NSM_MAX_TOKEN_LIFETIME -  A token lifetime duration (default 24h)
+* NSM_CONNECT_TIMEOUT - A timeout to connect to Network service Manager (default 5s)
+* NSM_MAX_TOKEN_LIFETIME - A token lifetime duration (default 24h)
 * NSM_LABELS - A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services
 * NSM_MECHANISM - Default Mechanism to use, supported values "kernel", "vfio"
 * NSM_NETWORK_SERVICES - A list of Network Service Requests URLs with inner format 
