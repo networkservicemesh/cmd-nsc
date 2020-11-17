@@ -34,6 +34,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
 	"github.com/networkservicemesh/sdk-sriov/pkg/tools/yamlhelper"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 
 	main "github.com/networkservicemesh/cmd-nsc"
 	"github.com/networkservicemesh/cmd-nsc/internal/config"
@@ -112,7 +113,7 @@ func TestMergeOptionsNoOverride(t *testing.T) {
 	}, nsmConf)
 }
 
-func TestConnectNSM(t *testing.T) {
+func TestRunClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -128,17 +129,23 @@ func TestConnectNSM(t *testing.T) {
 		},
 		NetworkServices: []config.NetworkServiceConfig{
 			*parse(t, "kernel://my-service/if-1?label-1=value-1"),
-			*parse(t, "kernel://my-service/if-2?label-1=value-1"),
-			*parse(t, "kernel://my-service/if-3?label-2=value-2"),
-			*parse(t, "kernel://service/if-4?label-2=value-2"),
+			*parse(t, "kernel://service/if-2?label-2=value-2"),
 		},
 	}
 
-	testClient := &nsmTestClient{}
+	testClient := new(nsmTestClient)
 
-	_, err = main.RunClient(ctx, rootConf, testClient)
+	cleanup, err := main.RunClient(ctx, rootConf, nsmTestClientFactory(testClient))
 	require.NoError(t, err)
 	require.Equal(t, fmt.Sprint(requests), fmt.Sprint(testClient.requests))
+
+	var closes []*networkservice.Connection
+	for _, request := range requests {
+		closes = append(closes, request.Connection.Clone())
+	}
+
+	cleanup()
+	require.Equal(t, fmt.Sprint(closes), fmt.Sprint(testClient.closes))
 }
 
 func parse(t *testing.T, u string) *config.NetworkServiceConfig {
@@ -146,6 +153,14 @@ func parse(t *testing.T, u string) *config.NetworkServiceConfig {
 	err := c.UnmarshalBinary([]byte(u))
 	require.NoError(t, err)
 	return c
+}
+
+func nsmTestClientFactory(testClient networkservice.NetworkServiceClient) func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
+	return func(additionalFunctionality ...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
+		return chain.NewNetworkServiceClient(append(
+			additionalFunctionality,
+			testClient)...)
+	}
 }
 
 type nsmTestClient struct {
@@ -162,5 +177,3 @@ func (n *nsmTestClient) Close(_ context.Context, conn *networkservice.Connection
 	n.closes = append(n.closes, conn)
 	return &empty.Empty{}, nil
 }
-
-var _ networkservice.NetworkServiceClient = (*nsmTestClient)(nil)

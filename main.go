@@ -24,9 +24,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"regexp"
-	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
@@ -96,9 +94,12 @@ func main() {
 
 	log.Entry(ctx).Infof("rootConf: %+v", rootConf)
 
-	connections, err := RunClient(ctx, rootConf, NewNSMClient(ctx, rootConf))
+	// ********************************************************************************
+	// Connect to NSMgr
+	// ********************************************************************************
+	cleanup, err := RunClient(ctx, rootConf, nsmClientFactory(ctx, rootConf))
 	if err != nil {
-		log.Entry(ctx).Errorf("failed to connect to network services: %v", err.Error())
+		log.Entry(ctx).Fatalf("failed to connect to network services: %v", err.Error())
 	} else {
 		log.Entry(ctx).Infof("All client init operations are done.")
 	}
@@ -106,18 +107,14 @@ func main() {
 	// Wait for cancel event to terminate
 	<-ctx.Done()
 
+	// ********************************************************************************
+	// Cleanup connections
+	// ********************************************************************************
 	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
-	for _, c := range connections {
-		_, err := c.Client.Close(context.Background(), c.Connection)
-		if err != nil {
-			log.Entry(ctx).Warnf("Failed to close connection %v cause: %v", c.Connection, err.Error())
-		}
-		c.Cancel()
-	}
+	cleanup()
 }
 
-// NewNSMClient - creates a client connection to NSMGr
-func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.NetworkServiceClient {
+func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
 	// ********************************************************************************
 	// Get a x509Source
 	// ********************************************************************************
@@ -160,111 +157,102 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
-	return client.NewClient(
+	nsmClient := client.NewClient(
 		ctx,
 		rootConf.Name,
 		nil,
 		spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
 		clientCC,
-		sendfd.NewClient(),
-		token.NewClient(),
 	)
-}
 
-// Connection is a return type for RunClient
-type Connection struct {
-	Client     networkservice.NetworkServiceClient
-	Connection *networkservice.Connection
-	Cancel     context.CancelFunc
+	tokenClient := token.NewClient()
+	sendfdClient := sendfd.NewClient()
+
+	return func(additionalFunctionality ...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
+		return chain.NewNetworkServiceClient(append(append([]networkservice.NetworkServiceClient{
+			nsmClient},
+			additionalFunctionality...),
+			tokenClient,
+			sendfdClient)...)
+	}
 }
 
 // RunClient - runs a client application with passed configuration over a client to Network Service Manager
-func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkservice.NetworkServiceClient) ([]*Connection, error) {
+func RunClient(
+	ctx context.Context,
+	rootConf *config.Config,
+	nsmClientFactory func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient,
+) (func(), error) {
 	// Validate config parameters
 	if err := rootConf.IsValid(); err != nil {
 		return nil, err
 	}
 
-	var requestConfigs []*requestConfig
-	for i := range rootConf.NetworkServices {
-		nsConf := &rootConf.NetworkServices[i]
-		if err := nsConf.MergeWithConfigOptions(rootConf); err != nil {
-			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
-			return nil, err
-		}
-		requestConfigs = appendNSConf(nsConf, requestConfigs)
-	}
-
 	// ********************************************************************************
 	// Initiate connections
 	// ********************************************************************************
+	var cleanup func()
+	for i := range rootConf.NetworkServices {
+		connID := fmt.Sprintf("%s-%d", rootConf.Name, i)
+		log.Entry(ctx).Infof("request: %v", connID)
 
-	// A list of cleanup operations
-	var connections []*Connection
-	for _, requestConfig := range requestConfigs {
-		var clients []networkservice.NetworkServiceClient
-		for _, nsConf := range requestConfig.nsConfs {
-			switch nsConf.Mechanism {
-			case kernelmech.MECHANISM:
-				clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(nsConf.Path[0])))
-			case vfiomech.MECHANISM:
-				cgroupDir, err := cgroupDirPath()
-				if err != nil {
-					log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
-					return connections, err
-				}
-				clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
-			}
+		// Update network services configs
+		nsConf := &rootConf.NetworkServices[i]
+		if err := nsConf.MergeWithConfigOptions(rootConf); err != nil {
+			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
+			continue
 		}
-		requestClient := chain.NewNetworkServiceClient(append(clients, nsmClient)...)
 
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
 			Connection: &networkservice.Connection{
-				Id:             fmt.Sprintf("%s-%d", rootConf.Name, len(connections)),
-				NetworkService: requestConfig.nsName,
-				Labels:         requestConfig.labels,
+				Id:             connID,
+				NetworkService: nsConf.NetworkService,
+				Labels:         nsConf.Labels,
 			},
 		}
 
+		// Create nsmClient
+		var clients []networkservice.NetworkServiceClient
+		switch nsConf.Mechanism {
+		case kernelmech.MECHANISM:
+			clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(nsConf.Path[0])))
+		case vfiomech.MECHANISM:
+			cgroupDir, err := cgroupDirPath()
+			if err != nil {
+				log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
+				continue
+			}
+			clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
+		}
+		nsmClient := nsmClientFactory(clients...)
+
 		// Performing nsmClient connection request
-		requestCtx, cancel := context.WithTimeout(ctx, 15*time.Minute) // timeout for healing
-		connection, err := requestClient.Request(requestCtx, request)
+		conn, err := nsmClient.Request(ctx, request)
 		if err != nil {
-			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, err.Error())
-			cancel()
-			return connections, err
+			log.Entry(ctx).Errorf("failed to request network service with %v: err %v", request, err.Error())
+			continue
 		}
 
-		log.Entry(ctx).Infof("Network service established with %v\n Connection:%v", request, connection)
-		// Add connection to list
-		connections = append(connections, &Connection{
-			Client:     requestClient,
-			Connection: connection,
-			Cancel:     cancel,
-		})
-	}
-	return connections, nil
-}
+		log.Entry(ctx).Infof("network service established with %v\n Connection: %v", request, conn)
 
-type requestConfig struct {
-	nsName  string
-	labels  map[string]string
-	nsConfs []*config.NetworkServiceConfig
-}
-
-func appendNSConf(nsConf *config.NetworkServiceConfig, requestConfigs []*requestConfig) []*requestConfig {
-	for _, requestConfig := range requestConfigs {
-		if requestConfig.nsName == nsConf.NetworkService && reflect.DeepEqual(requestConfig.labels, nsConf.Labels) {
-			requestConfig.nsConfs = append(requestConfig.nsConfs, nsConf)
-			return requestConfigs
+		// Add connection cleanup
+		cleanupPrevious := cleanup
+		cleanup = func() {
+			if cleanupPrevious != nil {
+				cleanupPrevious()
+			}
+			_, err := nsmClient.Close(context.Background(), conn)
+			if err != nil {
+				log.Entry(ctx).Warnf("failed to close connection %v cause: %v", conn, err.Error())
+			}
 		}
 	}
-	return append(requestConfigs, &requestConfig{
-		nsName:  nsConf.NetworkService,
-		labels:  nsConf.Labels,
-		nsConfs: []*config.NetworkServiceConfig{nsConf},
-	})
+
+	if cleanup == nil {
+		return nil, errors.New("all requests have been failed")
+	}
+	return cleanup, nil
 }
 
 var devicesCgroup = regexp.MustCompile("^[1-9][0-9]*?:devices:(.*)$")
