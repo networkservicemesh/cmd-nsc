@@ -169,3 +169,13 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - path: ./*
+      linters:
+        - gocritic
+      text: "sloppyReassign: re-assignment to `err` can be replaced with `err :="
+    - path: ./*
+      linters:
+        - gocritic
+        - govet
+      text: "shadow: declaration of \"err\" shadows declaration"

@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
@@ -54,6 +55,10 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 
 	"github.com/networkservicemesh/cmd-nsc/internal/config"
+)
+
+const (
+	cleanupTimeout = 10 * time.Second
 )
 
 func main() {
@@ -111,7 +116,11 @@ func main() {
 	// Cleanup connections
 	// ********************************************************************************
 	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
-	cleanup()
+
+	ctx, cancel = context.WithTimeout(context.Background(), cleanupTimeout)
+	defer cancel()
+
+	cleanup(ctx)
 }
 
 func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
@@ -182,23 +191,22 @@ func RunClient(
 	ctx context.Context,
 	rootConf *config.Config,
 	nsmClientFactory func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient,
-) (func(), error) {
+) (cleanup func(context.Context), err error) {
 	// Validate config parameters
-	if err := rootConf.IsValid(); err != nil {
+	if err = rootConf.IsValid(); err != nil {
 		return nil, err
 	}
 
 	// ********************************************************************************
 	// Initiate connections
 	// ********************************************************************************
-	var cleanup func()
 	for i := range rootConf.NetworkServices {
 		connID := fmt.Sprintf("%s-%d", rootConf.Name, i)
 		log.Entry(ctx).Infof("request: %v", connID)
 
 		// Update network services configs
 		nsConf := &rootConf.NetworkServices[i]
-		if err := nsConf.MergeWithConfigOptions(rootConf); err != nil {
+		if err = nsConf.MergeWithConfigOptions(rootConf); err != nil {
 			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
 			continue
 		}
@@ -218,7 +226,8 @@ func RunClient(
 		case kernelmech.MECHANISM:
 			clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(nsConf.Path[0])))
 		case vfiomech.MECHANISM:
-			cgroupDir, err := cgroupDirPath()
+			var cgroupDir string
+			cgroupDir, err = cgroupDirPath()
 			if err != nil {
 				log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
 				continue
@@ -238,11 +247,11 @@ func RunClient(
 
 		// Add connection cleanup
 		cleanupPrevious := cleanup
-		cleanup = func() {
+		cleanup = func(cleanupCtx context.Context) {
 			if cleanupPrevious != nil {
-				cleanupPrevious()
+				cleanupPrevious(cleanupCtx)
 			}
-			_, err := nsmClient.Close(context.Background(), conn)
+			_, err := nsmClient.Close(cleanupCtx, conn)
 			if err != nil {
 				log.Entry(ctx).Warnf("failed to close connection %v cause: %v", conn, err.Error())
 			}

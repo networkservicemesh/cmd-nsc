@@ -144,7 +144,7 @@ func TestRunClient(t *testing.T) {
 		closes = append(closes, request.Connection.Clone())
 	}
 
-	cleanup()
+	cleanup(ctx)
 	require.Equal(t, fmt.Sprint(closes), fmt.Sprint(testClient.closes))
 }
 
