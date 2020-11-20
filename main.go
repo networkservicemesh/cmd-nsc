@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
@@ -54,10 +53,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 
 	"github.com/networkservicemesh/cmd-nsc/internal/config"
-)
-
-const (
-	cleanupTimeout = 10 * time.Second
 )
 
 func main() {
@@ -116,7 +111,7 @@ func main() {
 	// ********************************************************************************
 	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
 
-	ctx, cancel = context.WithTimeout(context.Background(), cleanupTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), rootConf.ConnectTimeout)
 	defer cancel()
 
 	cleanup(ctx)
