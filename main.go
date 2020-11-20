@@ -20,16 +20,16 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"net/url"
 	"os"
-	"path"
-	"time"
+	"regexp"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
 	"github.com/spiffe/go-spiffe/v2/svid/x509svid"
@@ -37,21 +37,22 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	kernelmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	vfiomech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
+	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/mechanisms/vfio"
+	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/token"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
-	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
-	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
-
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
-	"github.com/networkservicemesh/cmd-nsc/pkg/config"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	"github.com/networkservicemesh/sdk/pkg/tools/jaeger"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/signalctx"
+	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
+	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
+
+	"github.com/networkservicemesh/cmd-nsc/internal/config"
 )
 
 func main() {
@@ -90,10 +91,14 @@ func main() {
 		log.Entry(ctx).Fatalf("error processing rootConf from env: %+v", err)
 	}
 
-	nsmClient := NewNSMClient(ctx, rootConf)
-	connections, err := RunClient(ctx, rootConf, nsmClient)
+	log.Entry(ctx).Infof("rootConf: %+v", rootConf)
+
+	// ********************************************************************************
+	// Connect to NSMgr
+	// ********************************************************************************
+	cleanup, err := RunClient(ctx, rootConf, nsmClientFactory(ctx, rootConf))
 	if err != nil {
-		log.Entry(ctx).Errorf("failed to connect to network services: %v", err.Error())
+		log.Entry(ctx).Fatalf("failed to connect to network services: %v", err.Error())
 	} else {
 		log.Entry(ctx).Infof("All client init operations are done.")
 	}
@@ -101,41 +106,42 @@ func main() {
 	// Wait for cancel event to terminate
 	<-ctx.Done()
 
-	logrus.Infof("Performing cleanup of connections due terminate...")
-	for _, c := range connections {
-		_, err := nsmClient.Close(context.Background(), c)
-		if err != nil {
-			logrus.Infof("Failed to close connection %v cause: %v", c, err)
-		}
-	}
+	// ********************************************************************************
+	// Cleanup connections
+	// ********************************************************************************
+	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
+
+	ctx, cancel = context.WithTimeout(context.Background(), rootConf.ConnectTimeout)
+	defer cancel()
+
+	cleanup(ctx)
 }
 
-// NewNSMClient - creates a client connection to NSMGr
-func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.NetworkServiceClient {
+func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
 	// ********************************************************************************
 	// Get a x509Source
 	// ********************************************************************************
 	source, err := workloadapi.NewX509Source(ctx)
 	if err != nil {
-		log.Entry(ctx).Fatalf("error getting x509 source: %+v", err)
+		log.Entry(ctx).Fatalf("error getting x509 source: %v", err.Error())
 	}
 	var svid *x509svid.SVID
 	svid, err = source.GetX509SVID()
 	if err != nil {
-		log.Entry(ctx).Fatalf("error getting x509 svid: %+v", err)
+		log.Entry(ctx).Fatalf("error getting x509 svid: %v", err.Error())
 	}
 	log.Entry(ctx).Infof("sVID: %q", svid.ID)
 
 	// ********************************************************************************
 	// Connect to NSManager
 	// ********************************************************************************
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithTimeout(ctx, 5*time.Second)
+	connectCtx, cancel := context.WithTimeout(ctx, rootConf.ConnectTimeout)
 	defer cancel()
 
 	log.Entry(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
 	var clientCC *grpc.ClientConn
-	clientCC, err = grpc.DialContext(ctx,
+	clientCC, err = grpc.DialContext(
+		connectCtx,
 		grpcutils.URLToTarget(&rootConf.ConnectTo),
 		append(spanhelper.WithTracingDial(),
 			grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
@@ -148,79 +154,121 @@ func NewNSMClient(ctx context.Context, rootConf *config.Config) networkservice.N
 			))...,
 	)
 	if err != nil {
-		log.Entry(ctx).Fatalf("failed to dial NSM: %v", err)
+		log.Entry(ctx).Fatalf("failed to dial NSM: %v", err.Error())
 	}
 
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
-	return client.NewClient(
-		ctx,
-		rootConf.Name,
-		nil,
-		spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
-		clientCC,
-		sendfd.NewClient(),
-	)
+	tokenClient := token.NewClient()
+	sendfdClient := sendfd.NewClient()
+
+	return func(additionalFunctionality ...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
+		return client.NewClient(
+			ctx,
+			rootConf.Name,
+			nil,
+			spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime),
+			clientCC,
+			append(
+				additionalFunctionality,
+				tokenClient,
+				sendfdClient,
+			)...,
+		)
+	}
 }
 
 // RunClient - runs a client application with passed configuration over a client to Network Service Manager
-func RunClient(ctx context.Context, rootConf *config.Config, nsmClient networkservice.NetworkServiceClient) ([]*networkservice.Connection, error) {
+func RunClient(
+	ctx context.Context,
+	rootConf *config.Config,
+	nsmClientFactory func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient,
+) (cleanup func(context.Context), err error) {
 	// Validate config parameters
-	if err := rootConf.IsValid(); err != nil {
-		return []*networkservice.Connection{}, err
+	if err = rootConf.IsValid(); err != nil {
+		return nil, err
 	}
 
 	// ********************************************************************************
 	// Initiate connections
 	// ********************************************************************************
+	for i := range rootConf.NetworkServices {
+		connID := fmt.Sprintf("%s-%d", rootConf.Name, i)
+		log.Entry(ctx).Infof("request: %v", connID)
 
-	// A list of cleanup operations
-	var connections []*networkservice.Connection
-
-	for idx, clientConf := range rootConf.NetworkServices {
-		err := clientConf.MergeWithConfigOptions(rootConf)
-		if err != nil {
-			log.Entry(ctx).Errorf("error during nsmClient config aggregation %v", err)
-			return connections, err
-		}
-		// We need update
-		outgoingMechanism := &networkservice.Mechanism{
-			Cls:        cls.LOCAL,
-			Type:       clientConf.Mechanism,
-			Parameters: map[string]string{},
-		}
-		switch clientConf.Mechanism {
-		case kernel.MECHANISM:
-			outgoingMechanism.Parameters[common.InterfaceNameKey] = clientConf.Path[0]
-			fileURL := &url.URL{Scheme: "file", Path: "/proc/self/ns/net"}
-			kernel.ToMechanism(outgoingMechanism).SetNetNSURL(fileURL.String())
-
-		case memif.MECHANISM:
-			outgoingMechanism.Parameters[memif.SocketFilename] = path.Join(clientConf.Path...)
+		// Update network services configs
+		nsConf := &rootConf.NetworkServices[i]
+		if err = nsConf.MergeWithConfigOptions(rootConf); err != nil {
+			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
+			continue
 		}
 
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
 			Connection: &networkservice.Connection{
-				NetworkService: clientConf.NetworkService,
-				Id:             fmt.Sprintf("%s-%d", rootConf.Name, idx),
-			},
-			MechanismPreferences: []*networkservice.Mechanism{
-				outgoingMechanism,
+				Id:             connID,
+				NetworkService: nsConf.NetworkService,
+				Labels:         nsConf.Labels,
 			},
 		}
+
+		// Create nsmClient
+		var clients []networkservice.NetworkServiceClient
+		switch nsConf.Mechanism {
+		case kernelmech.MECHANISM:
+			clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(nsConf.Path[0])))
+		case vfiomech.MECHANISM:
+			var cgroupDir string
+			cgroupDir, err = cgroupDirPath()
+			if err != nil {
+				log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
+				continue
+			}
+			clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
+		}
+		nsmClient := nsmClientFactory(clients...)
 
 		// Performing nsmClient connection request
-		conn, connerr := nsmClient.Request(ctx, request)
-		if connerr != nil {
-			log.Entry(ctx).Errorf("Failed to request network service with %v: err %v", request, connerr)
-			return connections, connerr
+		conn, err := nsmClient.Request(ctx, request)
+		if err != nil {
+			log.Entry(ctx).Errorf("failed to request network service with %v: err %v", request, err.Error())
+			continue
 		}
 
-		log.Entry(ctx).Infof("Network service established with %v\n Connection:%v", request, conn)
-		// Add connection to list
-		connections = append(connections, conn)
+		log.Entry(ctx).Infof("network service established with %v\n Connection: %v", request, conn)
+
+		// Add connection cleanup
+		cleanupPrevious := cleanup
+		cleanup = func(cleanupCtx context.Context) {
+			if cleanupPrevious != nil {
+				cleanupPrevious(cleanupCtx)
+			}
+			_, err := nsmClient.Close(cleanupCtx, conn)
+			if err != nil {
+				log.Entry(ctx).Warnf("failed to close connection %v cause: %v", conn, err.Error())
+			}
+		}
 	}
-	return connections, nil
+
+	if cleanup == nil {
+		return nil, errors.New("all requests have been failed")
+	}
+	return cleanup, nil
+}
+
+var devicesCgroup = regexp.MustCompile("^[1-9][0-9]*?:devices:(.*)$")
+
+func cgroupDirPath() (string, error) {
+	cgroupInfo, err := os.OpenFile("/proc/self/cgroup", os.O_RDONLY, 0)
+	if err != nil {
+		return "", errors.Wrap(err, "error opening cgroup info file")
+	}
+	for scanner := bufio.NewScanner(cgroupInfo); scanner.Scan(); {
+		line := scanner.Text()
+		if devicesCgroup.MatchString(line) {
+			return devicesCgroup.FindStringSubmatch(line)[1], nil
+		}
+	}
+	return "", errors.New("can't find out cgroup directory")
 }

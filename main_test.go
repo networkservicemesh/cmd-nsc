@@ -20,70 +20,32 @@ package main_test
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"testing"
-	"time"
-
-	"github.com/kelseyhightower/envconfig"
-
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/memif"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
+	"github.com/networkservicemesh/sdk-sriov/pkg/tools/yamlhelper"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
+
 	main "github.com/networkservicemesh/cmd-nsc"
-	"github.com/networkservicemesh/cmd-nsc/pkg/config"
+	"github.com/networkservicemesh/cmd-nsc/internal/config"
 )
 
-type nsmTestClient struct {
-	requests []*networkservice.NetworkServiceRequest
-	closes   []*networkservice.Connection
-}
-
-func (n *nsmTestClient) Request(ctx context.Context, in *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
-	n.requests = append(n.requests, in)
-	return in.Connection, nil
-}
-
-func (n *nsmTestClient) Close(ctx context.Context, in *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
-	n.closes = append(n.closes, in)
-	return nil, nil
-}
-
-type checkConnectionClient struct {
-	*testing.T
-	check func(*testing.T, context.Context, *networkservice.NetworkServiceRequest)
-}
-
-func (c *checkConnectionClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
-	c.check(c.T, ctx, request)
-	return next.Server(ctx).Request(ctx, request)
-}
-
-func (c *checkConnectionClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
-	return next.Server(ctx).Close(ctx, conn)
-}
-
-var _ networkservice.NetworkServiceClient = (*nsmTestClient)(nil)
-var _ networkservice.NetworkServiceClient = (*checkConnectionClient)(nil)
-
-func parse(t *testing.T, u string) config.NetworkServiceConfig {
-	c := config.NetworkServiceConfig{}
-	err := c.UnmarshalBinary([]byte(u))
-	require.NoError(t, err)
-	return c
-}
+const (
+	requestsFileName = "test/requests.yml"
+)
 
 func TestParseUrlsFromEnv(t *testing.T) {
-	err := os.Setenv("NSM_NETWORK_SERVICES", "kernel://my-service/nsmKernel,memif://second-service/memif.sock?key=value")
+	err := os.Setenv("NSM_NETWORK_SERVICES", "kernel://my-service/nsmKernel,vfio://second-service?sriovToken=intel/10G")
 	require.NoError(t, err)
 
 	c := &config.Config{}
@@ -94,119 +56,124 @@ func TestParseUrlsFromEnv(t *testing.T) {
 	require.Equal(t, kernel.MECHANISM, c.NetworkServices[0].Mechanism)
 	require.Equal(t, "nsmKernel", c.NetworkServices[0].Path[0])
 
-	require.Equal(t, memif.MECHANISM, c.NetworkServices[1].Mechanism)
-	require.Equal(t, "memif.sock", c.NetworkServices[1].Path[0])
-	require.Equal(t, "value", c.NetworkServices[1].Labels["key"])
+	require.Equal(t, vfio.MECHANISM, c.NetworkServices[1].Mechanism)
+	require.Equal(t, "intel/10G", c.NetworkServices[1].Labels["sriovToken"])
 }
 
 func TestParseNSMUrl(t *testing.T) {
-	u1 := parse(t, "kernel://my-service/nsmKernel?a=20")
-	require.Equal(t, "my-service", u1.NetworkService)
-	require.Equal(t, kernel.MECHANISM, u1.Mechanism)
-	require.Equal(t, "nsmKernel", u1.Path[0])
-	require.Equal(t, 1, len(u1.Labels))
-	require.Equal(t, "20", u1.Labels["a"])
+	nsmConf := parse(t, "kernel://my-service/nsmKernel?A=20")
+
+	require.Equal(t, &config.NetworkServiceConfig{
+		NetworkService: "my-service",
+		Path:           []string{"nsmKernel"},
+		Mechanism:      kernel.MECHANISM,
+		Labels: map[string]string{
+			"A": "20",
+		},
+	}, nsmConf)
 }
 
 func TestMergeOptions(t *testing.T) {
-	u1 := parse(t, "my-service/nsmKernel")
-
-	conf := &config.Config{
-		Mechanism: "memif",
+	rootConf := &config.Config{
+		Mechanism: "vfio",
 		Labels:    []string{"A=20"},
 	}
-	err := u1.MergeWithConfigOptions(conf)
-	require.NoError(t, err)
-	require.Equal(t, memif.MECHANISM, u1.Mechanism)
-	require.Equal(t, 1, len(u1.Labels))
-	require.Equal(t, "20", u1.Labels["A"])
+
+	nsmConf := parse(t, "my-service?B=40")
+	require.NoError(t, nsmConf.MergeWithConfigOptions(rootConf))
+
+	require.Equal(t, &config.NetworkServiceConfig{
+		NetworkService: "my-service",
+		Path:           []string{},
+		Mechanism:      vfio.MECHANISM,
+		Labels: map[string]string{
+			"A": "20",
+			"B": "40",
+		},
+	}, nsmConf)
 }
+
 func TestMergeOptionsNoOverride(t *testing.T) {
-	u1 := parse(t, "kernel://my-service/nsmKernel")
-
-	conf := &config.Config{
-		Mechanism: "memif",
+	rootConf := &config.Config{
+		Mechanism: "vfio",
 		Labels:    []string{"A=20"},
 	}
-	err := u1.MergeWithConfigOptions(conf)
-	require.NoError(t, err)
-	require.Equal(t, kernel.MECHANISM, u1.Mechanism)
-	require.Equal(t, 1, len(u1.Labels))
-	require.Equal(t, "20", u1.Labels["A"])
+
+	nsmConf := parse(t, "kernel://my-service/nsmKernel?B=40")
+	require.NoError(t, nsmConf.MergeWithConfigOptions(rootConf))
+
+	require.Equal(t, &config.NetworkServiceConfig{
+		NetworkService: "my-service",
+		Path:           []string{"nsmKernel"},
+		Mechanism:      kernel.MECHANISM,
+		Labels: map[string]string{
+			"A": "20",
+			"B": "40",
+		},
+	}, nsmConf)
 }
 
-func TestConnectNSM(t *testing.T) {
+func TestRunClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	testClient := &nsmTestClient{}
-	cfg := &config.Config{
+	var requests []*networkservice.NetworkServiceRequest
+	err := yamlhelper.UnmarshalFile(requestsFileName, &requests)
+	require.NoError(t, err)
+
+	rootConf := &config.Config{
 		Name: "nsc",
 		ConnectTo: url.URL{
 			Scheme: "unix",
 			Path:   "/file.sock",
 		},
 		NetworkServices: []config.NetworkServiceConfig{
-			parse(t, "kernel://my-service/nsmKernel?"),
+			*parse(t, "kernel://my-service/if-1?label-1=value-1"),
+			*parse(t, "kernel://service/if-2?label-2=value-2"),
 		},
 	}
-	conns, err := main.RunClient(ctx, cfg, testClient)
+
+	testClient := new(nsmTestClient)
+
+	cleanup, err := main.RunClient(ctx, rootConf, nsmTestClientFactory(testClient))
 	require.NoError(t, err)
-	require.NotNil(t, conns)
-	require.Equal(t, 1, len(conns))
+	require.Equal(t, fmt.Sprint(requests), fmt.Sprint(testClient.requests))
+
+	var closes []*networkservice.Connection
+	for _, request := range requests {
+		closes = append(closes, request.Connection.Clone())
+	}
+
+	cleanup(ctx)
+	require.Equal(t, fmt.Sprint(closes), fmt.Sprint(testClient.closes))
 }
 
-func TestConnectNSMGRPC(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	testClient := &nsmTestClient{}
-	cfg := &config.Config{
-		Name: "nsc",
-		ConnectTo: url.URL{
-			Scheme: "unix",
-			Path:   "/file.sock",
-		},
-		NetworkServices: []config.NetworkServiceConfig{
-			parse(t, "kernel://my-service/nsmKernel?"),
-		},
-	}
-	conns, err := main.RunClient(ctx, cfg, testClient)
+func parse(t *testing.T, u string) *config.NetworkServiceConfig {
+	c := &config.NetworkServiceConfig{}
+	err := c.UnmarshalBinary([]byte(u))
 	require.NoError(t, err)
-	require.NotNil(t, conns)
-	require.Equal(t, 1, len(conns))
+	return c
 }
 
-func TestSendFd(t *testing.T) {
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*20))
-	defer cancel()
-
-	testClient := chain.NewNetworkServiceClient(
-		sendfd.NewClient(),
-		&checkConnectionClient{
-			T: t,
-			check: func(t *testing.T, ctx context.Context, request *networkservice.NetworkServiceRequest) {
-				preferences := request.GetMechanismPreferences()
-				require.NotNil(t, preferences)
-				require.Equal(t, 1, len(preferences))
-				inodeURLString := preferences[0].GetParameters()[common.InodeURL]
-				inodeURL, err := url.Parse(inodeURLString)
-				require.NoError(t, err)
-				require.Equal(t, "inode", inodeURL.Scheme)
-			},
-		},
-	)
-
-	cfg := &config.Config{
-		Name:      "nsc",
-		ConnectTo: url.URL{Scheme: "tcp", Host: "127.0.0.1:0"},
-		NetworkServices: []config.NetworkServiceConfig{
-			parse(t, "kernel://my-service/nsmKernel?"),
-		},
+func nsmTestClientFactory(testClient networkservice.NetworkServiceClient) func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
+	return func(additionalFunctionality ...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
+		return chain.NewNetworkServiceClient(append(
+			additionalFunctionality,
+			testClient)...)
 	}
+}
 
-	conns, err := main.RunClient(ctx, cfg, testClient)
-	require.NoError(t, err)
-	require.NotNil(t, conns)
-	require.Equal(t, 1, len(conns))
+type nsmTestClient struct {
+	requests []*networkservice.NetworkServiceRequest
+	closes   []*networkservice.Connection
+}
+
+func (n *nsmTestClient) Request(_ context.Context, request *networkservice.NetworkServiceRequest, _ ...grpc.CallOption) (*networkservice.Connection, error) {
+	n.requests = append(n.requests, request)
+	return request.Connection, nil
+}
+
+func (n *nsmTestClient) Close(_ context.Context, conn *networkservice.Connection, _ ...grpc.CallOption) (*empty.Empty, error) {
+	n.closes = append(n.closes, conn)
+	return &empty.Empty{}, nil
 }
