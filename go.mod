@@ -8,8 +8,8 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/networkservicemesh/api v0.0.0-20201117093615-ae6039374f31
-	github.com/networkservicemesh/sdk v0.0.0-20201201081247-d0ca5e402484
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20201201082134-e7e4df4513a8
+	github.com/networkservicemesh/sdk v0.0.0-20201201111053-98deb86e4ee8
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20201201111831-dcfb37900a19
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spiffe/go-spiffe/v2 v2.0.0-alpha.5
