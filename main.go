@@ -24,7 +24,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
@@ -267,8 +269,14 @@ func cgroupDirPath() (string, error) {
 	for scanner := bufio.NewScanner(cgroupInfo); scanner.Scan(); {
 		line := scanner.Text()
 		if devicesCgroup.MatchString(line) {
-			return devicesCgroup.FindStringSubmatch(line)[1], nil
+			return podCgroupDirPath(devicesCgroup.FindStringSubmatch(line)[1]), nil
 		}
 	}
 	return "", errors.New("can't find out cgroup directory")
+}
+
+func podCgroupDirPath(containerCgroupDirPath string) string {
+	split := strings.Split(containerCgroupDirPath, string(filepath.Separator))
+	split[len(split)-1] = "*" // any container match
+	return filepath.Join(split...)
 }
