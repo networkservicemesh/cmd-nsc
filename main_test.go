@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
+// Copyright (c) 2020-2021 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -35,6 +35,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
 	"github.com/networkservicemesh/sdk-sriov/pkg/tools/yamlhelper"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 
 	main "github.com/networkservicemesh/cmd-nsc"
 	"github.com/networkservicemesh/cmd-nsc/internal/config"
@@ -157,9 +158,7 @@ func parse(t *testing.T, u string) *config.NetworkServiceConfig {
 
 func nsmTestClientFactory(testClient networkservice.NetworkServiceClient) func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
 	return func(additionalFunctionality ...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
-		return chain.NewNetworkServiceClient(append(
-			additionalFunctionality,
-			testClient)...)
+		return next.NewNetworkServiceClient(chain.NewNetworkServiceClient(additionalFunctionality...), chain.NewNetworkServiceClient(testClient))
 	}
 }
 
