@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
+// Copyright (c) 2020-2021 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -230,6 +230,10 @@ func RunClient(
 			clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
 		}
 		nsmClient := nsmClientFactory(clients...)
+
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, rootConf.RequestTimeout)
+		defer cancel()
 
 		// Performing nsmClient connection request
 		conn, err := nsmClient.Request(ctx, request)
