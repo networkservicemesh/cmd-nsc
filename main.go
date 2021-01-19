@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
+// Copyright (c) 2020-2021 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -113,7 +113,7 @@ func main() {
 	// ********************************************************************************
 	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
 
-	ctx, cancel = context.WithTimeout(context.Background(), rootConf.ConnectTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), rootConf.DialTimeout)
 	defer cancel()
 
 	cleanup(ctx)
@@ -137,7 +137,7 @@ func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...netw
 	// ********************************************************************************
 	// Connect to NSManager
 	// ********************************************************************************
-	connectCtx, cancel := context.WithTimeout(ctx, rootConf.ConnectTimeout)
+	connectCtx, cancel := context.WithTimeout(ctx, rootConf.DialTimeout)
 	defer cancel()
 
 	log.Entry(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
@@ -230,6 +230,10 @@ func RunClient(
 			clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
 		}
 		nsmClient := nsmClientFactory(clients...)
+
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, rootConf.RequestTimeout)
+		defer cancel()
 
 		// Performing nsmClient connection request
 		conn, err := nsmClient.Request(ctx, request)
