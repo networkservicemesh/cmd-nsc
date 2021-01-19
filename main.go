@@ -113,7 +113,7 @@ func main() {
 	// ********************************************************************************
 	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
 
-	ctx, cancel = context.WithTimeout(context.Background(), rootConf.ConnectTimeout)
+	ctx, cancel = context.WithTimeout(context.Background(), rootConf.DialTimeout)
 	defer cancel()
 
 	cleanup(ctx)
@@ -137,7 +137,7 @@ func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...netw
 	// ********************************************************************************
 	// Connect to NSManager
 	// ********************************************************************************
-	connectCtx, cancel := context.WithTimeout(ctx, rootConf.ConnectTimeout)
+	connectCtx, cancel := context.WithTimeout(ctx, rootConf.DialTimeout)
 	defer cancel()
 
 	log.Entry(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
