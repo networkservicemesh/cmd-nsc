@@ -49,9 +49,10 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/jaeger"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/networkservicemesh/sdk/pkg/tools/logger"
+	"github.com/networkservicemesh/sdk/pkg/tools/logger/logruslogger"
+	"github.com/networkservicemesh/sdk/pkg/tools/opentracing"
 	"github.com/networkservicemesh/sdk/pkg/tools/signalctx"
-	"github.com/networkservicemesh/sdk/pkg/tools/spanhelper"
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 
 	"github.com/networkservicemesh/cmd-nsc/internal/config"
@@ -71,14 +72,15 @@ func main() {
 	// ********************************************************************************
 	logrus.Info("Starting NetworkServiceMesh Client ...")
 	logrus.SetFormatter(&nested.Formatter{})
-	logrus.SetLevel(logrus.TraceLevel)
-
-	ctx = log.WithField(ctx, "cmd", os.Args[:1])
+	ctx, _ = logruslogger.New(
+		logger.WithFields(ctx, map[string]interface{}{"cmd": os.Args[:1]}),
+	)
 
 	// ********************************************************************************
 	// Configure open tracing
 	// ********************************************************************************
 	// Enable Jaeger
+	logger.EnableTracing(true)
 	jaegerCloser := jaeger.InitJaeger("nsc")
 	defer func() { _ = jaegerCloser.Close() }()
 
@@ -87,22 +89,22 @@ func main() {
 	// ********************************************************************************
 	rootConf := &config.Config{}
 	if err := envconfig.Usage("nsm", rootConf); err != nil {
-		log.Entry(ctx).Fatal(err)
+		logger.Log(ctx).Fatal(err)
 	}
 	if err := envconfig.Process("nsm", rootConf); err != nil {
-		log.Entry(ctx).Fatalf("error processing rootConf from env: %+v", err)
+		logger.Log(ctx).Fatalf("error processing rootConf from env: %+v", err)
 	}
 
-	log.Entry(ctx).Infof("rootConf: %+v", rootConf)
+	logger.Log(ctx).Infof("rootConf: %+v", rootConf)
 
 	// ********************************************************************************
 	// Connect to NSMgr
 	// ********************************************************************************
 	cleanup, err := RunClient(ctx, rootConf, nsmClientFactory(ctx, rootConf))
 	if err != nil {
-		log.Entry(ctx).Fatalf("failed to connect to network services: %v", err.Error())
+		logger.Log(ctx).Fatalf("failed to connect to network services: %v", err.Error())
 	} else {
-		log.Entry(ctx).Infof("All client init operations are done.")
+		logger.Log(ctx).Infof("All client init operations are done.")
 	}
 
 	// Wait for cancel event to terminate
@@ -111,7 +113,7 @@ func main() {
 	// ********************************************************************************
 	// Cleanup connections
 	// ********************************************************************************
-	log.Entry(ctx).Infof("Performing cleanup of connections due terminate...")
+	logger.Log(ctx).Infof("Performing cleanup of connections due terminate...")
 
 	ctx, cancel = context.WithTimeout(context.Background(), rootConf.DialTimeout)
 	defer cancel()
@@ -125,14 +127,14 @@ func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...netw
 	// ********************************************************************************
 	source, err := workloadapi.NewX509Source(ctx)
 	if err != nil {
-		log.Entry(ctx).Fatalf("error getting x509 source: %v", err.Error())
+		logger.Log(ctx).Fatalf("error getting x509 source: %v", err.Error())
 	}
 	var svid *x509svid.SVID
 	svid, err = source.GetX509SVID()
 	if err != nil {
-		log.Entry(ctx).Fatalf("error getting x509 svid: %v", err.Error())
+		logger.Log(ctx).Fatalf("error getting x509 svid: %v", err.Error())
 	}
-	log.Entry(ctx).Infof("sVID: %q", svid.ID)
+	logger.Log(ctx).Infof("sVID: %q", svid.ID)
 
 	// ********************************************************************************
 	// Connect to NSManager
@@ -140,12 +142,12 @@ func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...netw
 	connectCtx, cancel := context.WithTimeout(ctx, rootConf.DialTimeout)
 	defer cancel()
 
-	log.Entry(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
+	logger.Log(ctx).Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
 	var clientCC *grpc.ClientConn
 	clientCC, err = grpc.DialContext(
 		connectCtx,
 		grpcutils.URLToTarget(&rootConf.ConnectTo),
-		append(spanhelper.WithTracingDial(),
+		append(opentracing.WithTracingDial(),
 			grpc.WithDefaultCallOptions(grpc.WaitForReady(true)),
 			grpc.WithTransportCredentials(
 				grpcfd.TransportCredentials(
@@ -156,7 +158,7 @@ func nsmClientFactory(ctx context.Context, rootConf *config.Config) func(...netw
 			))...,
 	)
 	if err != nil {
-		log.Entry(ctx).Fatalf("failed to dial NSM: %v", err.Error())
+		logger.Log(ctx).Fatalf("failed to dial NSM: %v", err.Error())
 	}
 
 	// ********************************************************************************
@@ -192,17 +194,20 @@ func RunClient(
 		return nil, err
 	}
 
+	// Setup logging
+	ctx, _ = logruslogger.New(ctx)
+
 	// ********************************************************************************
 	// Initiate connections
 	// ********************************************************************************
 	for i := range rootConf.NetworkServices {
 		connID := fmt.Sprintf("%s-%d", rootConf.Name, i)
-		log.Entry(ctx).Infof("request: %v", connID)
+		logger.Log(ctx).Infof("request: %v", connID)
 
 		// Update network services configs
 		nsConf := &rootConf.NetworkServices[i]
 		if err = nsConf.MergeWithConfigOptions(rootConf); err != nil {
-			log.Entry(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
+			logger.Log(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
 			continue
 		}
 
@@ -224,7 +229,7 @@ func RunClient(
 			var cgroupDir string
 			cgroupDir, err = cgroupDirPath()
 			if err != nil {
-				log.Entry(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
+				logger.Log(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
 				continue
 			}
 			clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
@@ -238,11 +243,11 @@ func RunClient(
 		// Performing nsmClient connection request
 		conn, err := nsmClient.Request(ctx, request)
 		if err != nil {
-			log.Entry(ctx).Errorf("failed to request network service with %v: err %v", request, err.Error())
+			logger.Log(ctx).Errorf("failed to request network service with %v: err %v", request, err.Error())
 			continue
 		}
 
-		log.Entry(ctx).Infof("network service established with %v\n Connection: %v", request, conn)
+		logger.Log(ctx).Infof("network service established with %v\n Connection: %v", request, conn)
 
 		// Add connection cleanup
 		cleanupPrevious := cleanup
@@ -252,7 +257,7 @@ func RunClient(
 			}
 			_, err := nsmClient.Close(cleanupCtx, conn)
 			if err != nil {
-				log.Entry(ctx).Warnf("failed to close connection %v cause: %v", conn, err.Error())
+				logger.Log(ctx).Warnf("failed to close connection %v cause: %v", conn, err.Error())
 			}
 		}
 	}
