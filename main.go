@@ -40,6 +40,7 @@ import (
 	"google.golang.org/grpc/credentials"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
 	kernelmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	vfiomech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
 	"github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/mechanisms/vfio"
@@ -51,6 +52,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/jaeger"
 	"github.com/networkservicemesh/sdk/pkg/tools/logger"
 	"github.com/networkservicemesh/sdk/pkg/tools/logger/logruslogger"
+	"github.com/networkservicemesh/sdk/pkg/tools/nsurl"
 	"github.com/networkservicemesh/sdk/pkg/tools/opentracing"
 	"github.com/networkservicemesh/sdk/pkg/tools/signalctx"
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
@@ -205,26 +207,29 @@ func RunClient(
 		logger.Log(ctx).Infof("request: %v", connID)
 
 		// Update network services configs
-		nsConf := &rootConf.NetworkServices[i]
-		if err = nsConf.MergeWithConfigOptions(rootConf); err != nil {
-			logger.Log(ctx).Errorf("error during nsmClient config aggregation: %v", err.Error())
-			continue
-		}
+		u := (*nsurl.NSURL)(&rootConf.NetworkServices[i])
 
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
 			Connection: &networkservice.Connection{
 				Id:             connID,
-				NetworkService: nsConf.NetworkService,
-				Labels:         nsConf.Labels,
+				NetworkService: u.NetworkService(),
+				Labels:         u.Labels(),
 			},
 		}
 
 		// Create nsmClient
 		var clients []networkservice.NetworkServiceClient
-		switch nsConf.Mechanism {
+
+		mech := u.Mechanism()
+
+		switch mech.Type {
 		case kernelmech.MECHANISM:
-			clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(nsConf.Path[0])))
+			iface := ""
+			if len(u.Mechanism().Parameters) > 0 {
+				iface = u.Mechanism().Parameters[common.InterfaceNameKey]
+			}
+			clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(iface)))
 		case vfiomech.MECHANISM:
 			var cgroupDir string
 			cgroupDir, err = cgroupDirPath()

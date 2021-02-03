@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
+// Copyright (c) 2020-2021 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -41,8 +41,8 @@ func TestSendFd(t *testing.T) {
 	rootConf := &config.Config{
 		Name:      "nsc",
 		ConnectTo: url.URL{Scheme: "tcp", Host: "127.0.0.1:0"},
-		NetworkServices: []config.NetworkServiceConfig{
-			*parse(t, "kernel://my-service/nsmKernel?"),
+		NetworkServices: []url.URL{
+			*must(url.Parse("kernel://my-service/nsmKernel?")),
 		},
 	}
 
