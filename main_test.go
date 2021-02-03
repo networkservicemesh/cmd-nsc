@@ -31,18 +31,16 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
-	"github.com/networkservicemesh/sdk-sriov/pkg/tools/yamlhelper"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/tools/nsurl"
 
 	main "github.com/networkservicemesh/cmd-nsc"
 	"github.com/networkservicemesh/cmd-nsc/internal/config"
-)
-
-const (
-	requestsFileName = "test/requests.yml"
 )
 
 func TestParseUrlsFromEnv(t *testing.T) {
@@ -54,73 +52,68 @@ func TestParseUrlsFromEnv(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, 2, len(c.NetworkServices))
-	require.Equal(t, kernel.MECHANISM, c.NetworkServices[0].Mechanism)
-	require.Equal(t, "nsmKernel", c.NetworkServices[0].Path[0])
 
-	require.Equal(t, vfio.MECHANISM, c.NetworkServices[1].Mechanism)
-	require.Equal(t, "intel/10G", c.NetworkServices[1].Labels["sriovToken"])
+	url1 := nsurl.NSURL(c.NetworkServices[0])
+	url2 := nsurl.NSURL(c.NetworkServices[1])
+
+	require.Equal(t, kernel.MECHANISM, url1.Mechanism().Type)
+	require.Equal(t, "nsmKernel", url1.Mechanism().GetParameters()[common.InterfaceNameKey])
+
+	require.Equal(t, vfio.MECHANISM, url2.Mechanism().Type)
+	require.Equal(t, "intel/10G", url2.Labels()["sriovToken"])
 }
 
-func TestParseNSMUrl(t *testing.T) {
-	nsmConf := parse(t, "kernel://my-service/nsmKernel?A=20")
-
-	require.Equal(t, &config.NetworkServiceConfig{
-		NetworkService: "my-service",
-		Path:           []string{"nsmKernel"},
-		Mechanism:      kernel.MECHANISM,
-		Labels: map[string]string{
-			"A": "20",
-		},
-	}, nsmConf)
-}
-
-func TestMergeOptions(t *testing.T) {
-	rootConf := &config.Config{
-		Mechanism: "vfio",
-		Labels:    []string{"A=20"},
+func must(u *url.URL, err error) *url.URL {
+	if err != nil {
+		panic(err.Error())
 	}
-
-	nsmConf := parse(t, "my-service?B=40")
-	require.NoError(t, nsmConf.MergeWithConfigOptions(rootConf))
-
-	require.Equal(t, &config.NetworkServiceConfig{
-		NetworkService: "my-service",
-		Path:           []string{},
-		Mechanism:      vfio.MECHANISM,
-		Labels: map[string]string{
-			"A": "20",
-			"B": "40",
-		},
-	}, nsmConf)
-}
-
-func TestMergeOptionsNoOverride(t *testing.T) {
-	rootConf := &config.Config{
-		Mechanism: "vfio",
-		Labels:    []string{"A=20"},
-	}
-
-	nsmConf := parse(t, "kernel://my-service/nsmKernel?B=40")
-	require.NoError(t, nsmConf.MergeWithConfigOptions(rootConf))
-
-	require.Equal(t, &config.NetworkServiceConfig{
-		NetworkService: "my-service",
-		Path:           []string{"nsmKernel"},
-		Mechanism:      kernel.MECHANISM,
-		Labels: map[string]string{
-			"A": "20",
-			"B": "40",
-		},
-	}, nsmConf)
+	return u
 }
 
 func TestRunClient(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	var requests []*networkservice.NetworkServiceRequest
-	err := yamlhelper.UnmarshalFile(requestsFileName, &requests)
-	require.NoError(t, err)
+	var requests = []*networkservice.NetworkServiceRequest{
+		{
+			Connection: &networkservice.Connection{
+				Id:             "nsc-0",
+				NetworkService: "my-service",
+				Labels: map[string]string{
+					"label-1": "value-1",
+				},
+			},
+			MechanismPreferences: []*networkservice.Mechanism{
+				{
+					Cls:  cls.LOCAL,
+					Type: kernel.MECHANISM,
+					Parameters: map[string]string{
+						kernel.NetNSURL:         "file:///proc/thread-self/ns/net",
+						kernel.InterfaceNameKey: "if-1",
+					},
+				},
+			},
+		},
+		{
+			Connection: &networkservice.Connection{
+				Id:             "nsc-1",
+				NetworkService: "service",
+				Labels: map[string]string{
+					"label-2": "value-2",
+				},
+			},
+			MechanismPreferences: []*networkservice.Mechanism{
+				{
+					Cls:  cls.LOCAL,
+					Type: kernel.MECHANISM,
+					Parameters: map[string]string{
+						kernel.NetNSURL:         "file:///proc/thread-self/ns/net",
+						kernel.InterfaceNameKey: "if-2",
+					},
+				},
+			},
+		},
+	}
 
 	rootConf := &config.Config{
 		Name: "nsc",
@@ -128,9 +121,9 @@ func TestRunClient(t *testing.T) {
 			Scheme: "unix",
 			Path:   "/file.sock",
 		},
-		NetworkServices: []config.NetworkServiceConfig{
-			*parse(t, "kernel://my-service/if-1?label-1=value-1"),
-			*parse(t, "kernel://service/if-2?label-2=value-2"),
+		NetworkServices: []url.URL{
+			*must(url.Parse("kernel://my-service/if-1?label-1=value-1")),
+			*must(url.Parse("kernel://service/if-2?label-2=value-2")),
 		},
 	}
 
@@ -147,13 +140,6 @@ func TestRunClient(t *testing.T) {
 
 	cleanup(ctx)
 	require.Equal(t, fmt.Sprint(closes), fmt.Sprint(testClient.closes))
-}
-
-func parse(t *testing.T, u string) *config.NetworkServiceConfig {
-	c := &config.NetworkServiceConfig{}
-	err := c.UnmarshalBinary([]byte(u))
-	require.NoError(t, err)
-	return c
 }
 
 func nsmTestClientFactory(testClient networkservice.NetworkServiceClient) func(...networkservice.NetworkServiceClient) networkservice.NetworkServiceClient {
