@@ -20,13 +20,9 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
-	"regexp"
-	"strings"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
@@ -230,13 +226,7 @@ func RunClient(
 			}
 			clients = append(clients, kernel.NewClient(kernel.WithInterfaceName(iface)))
 		case vfiomech.MECHANISM:
-			var cgroupDir string
-			cgroupDir, err = cgroupDirPath()
-			if err != nil {
-				log.FromContext(ctx).Errorf("failed to get devices cgroup: %v", err.Error())
-				continue
-			}
-			clients = append(clients, vfio.NewClient("/dev/vfio", cgroupDir))
+			clients = append(clients, vfio.NewClient())
 		}
 		nsmClient := nsmClientFactory(clients...)
 
@@ -270,26 +260,4 @@ func RunClient(
 		return nil, errors.New("all requests have been failed")
 	}
 	return cleanup, nil
-}
-
-var devicesCgroup = regexp.MustCompile("^[1-9][0-9]*?:devices:(.*)$")
-
-func cgroupDirPath() (string, error) {
-	cgroupInfo, err := os.OpenFile("/proc/self/cgroup", os.O_RDONLY, 0)
-	if err != nil {
-		return "", errors.Wrap(err, "error opening cgroup info file")
-	}
-	for scanner := bufio.NewScanner(cgroupInfo); scanner.Scan(); {
-		line := scanner.Text()
-		if devicesCgroup.MatchString(line) {
-			return podCgroupDirPath(devicesCgroup.FindStringSubmatch(line)[1]), nil
-		}
-	}
-	return "", errors.New("can't find out cgroup directory")
-}
-
-func podCgroupDirPath(containerCgroupDirPath string) string {
-	split := strings.Split(containerCgroupDirPath, string(filepath.Separator))
-	split[len(split)-1] = "*" // any container match
-	return filepath.Join(split...)
 }
