@@ -190,7 +190,7 @@ func main() {
 			_, _ = nsmClient.Close(closeCtx, resp)
 		}()
 
-		logger.Infof("succesfully connected to %v. Response: %v", u.NetworkService(), resp)
+		logger.Infof("successfully connected to %v. Response: %v", u.NetworkService(), resp)
 	}
 
 	// Wait for cancel event to terminate
