@@ -186,7 +186,7 @@ func main() {
 		}
 
 		defer func() {
-			closeCtx, cancelClose := context.WithTimeout(ctx, rootConf.RequestTimeout)
+			closeCtx, cancelClose := context.WithTimeout(context.Background(), rootConf.RequestTimeout)
 			defer cancelClose()
 			_, _ = nsmClient.Close(closeCtx, resp)
 		}()
