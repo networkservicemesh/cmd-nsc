@@ -145,8 +145,9 @@ func main() {
 		client.WithName(rootConf.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
 		client.WithAdditionalFunctionality(
+			sriovtoken.NewClient(),
 			mechanisms.NewClient(map[string]networkservice.NetworkServiceClient{
-				vfiomech.MECHANISM:   chain.NewNetworkServiceClient(vfio.NewClient(), sriovtoken.NewClient()),
+				vfiomech.MECHANISM:   chain.NewNetworkServiceClient(vfio.NewClient()),
 				kernelmech.MECHANISM: chain.NewNetworkServiceClient(kernel.NewClient()),
 			}),
 			sendfd.NewClient(),
