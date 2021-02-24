@@ -51,11 +51,3 @@ func (c *Config) IsValid() error {
 	}
 	return nil
 }
-
-// NetworkServiceConfig - defines a network service request configuration
-type NetworkServiceConfig struct {
-	NetworkService string            `default:"" desc:"A name of network service" split_words:"true"`
-	Path           []string          `default:"" desc:"An interfaceName or memif socket file name" split_words:"true"`
-	Mechanism      string            `default:"" desc:"Mechanism used by client" split_words:"true"`
-	Labels         map[string]string `default:"" desc:"A map of client labels" split_words:"true"`
-}
