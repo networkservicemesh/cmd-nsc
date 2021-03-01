@@ -87,6 +87,8 @@ github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
 github.com/google/uuid v1.1.2 h1:EVhdT+1Kseyi1/pUmXKaFxYsDNy9RQYkMWRH68J/W7Y=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.2.0 h1:qJYtXnJRWmpe7m/3XlyhrsLrEURqHRM2kxzoxXqyUDs=
+github.com/google/uuid v1.2.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/gopherjs/gopherjs v0.0.0-20190910122728-9d188e94fb99/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/mux v0.0.0-20181024020800-521ea7b17d02/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
 github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 h1:MJG/KsmcqMwFAkh8mTnAwhyKoB+sTAnY4CACC110tbU=
@@ -137,8 +139,8 @@ github.com/networkservicemesh/sdk v0.0.0-20210226095245-acdecd4599ac h1:U9LDdSiC
 github.com/networkservicemesh/sdk v0.0.0-20210226095245-acdecd4599ac/go.mod h1:IrL3IsUBr/iQrtLQEtmBRFKoIKjYZEW+Z7ZFDt9TbRc=
 github.com/networkservicemesh/sdk-kernel v0.0.0-20210226095937-76847e2a604b h1:nXkV/JZahKezBaNm1d/ZK8X7qYhldbqbNF5zNCF/H60=
 github.com/networkservicemesh/sdk-kernel v0.0.0-20210226095937-76847e2a604b/go.mod h1:P2OFnGk/D8/ofa17KRKk80302uQvxVFPZM+IxzXMop8=
-github.com/networkservicemesh/sdk-sriov v0.0.0-20210226100411-20d85b751bdb h1:eBQwLJozNp+1Rc9sfBb25LR4FqCmMfD5c60qJJ1zqhw=
-github.com/networkservicemesh/sdk-sriov v0.0.0-20210226100411-20d85b751bdb/go.mod h1:+4WbIteyx02EwW2zEk45Krj6TwaQjX9JZFV/u4CfeAs=
+github.com/networkservicemesh/sdk-sriov v0.0.0-20210301035725-265109a7e6e1 h1:HhOl7o5s6aL/a8TaN+BfJTMkgJnyq42QYMBb7YC/zMA=
+github.com/networkservicemesh/sdk-sriov v0.0.0-20210301035725-265109a7e6e1/go.mod h1:fu+YL/a8LPi4PF0G79EwyiPDeFuutsSdR8HFRgRMDI0=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/olekukonko/tablewriter v0.0.1/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
