@@ -85,15 +85,15 @@ func main() {
 	// ********************************************************************************
 	// Get config from environment
 	// ********************************************************************************
-	rootConf := &config.Config{}
-	if err := envconfig.Usage("nsm", rootConf); err != nil {
+	c := &config.Config{}
+	if err := envconfig.Usage("nsm", c); err != nil {
 		logger.Fatal(err)
 	}
-	if err := envconfig.Process("nsm", rootConf); err != nil {
+	if err := envconfig.Process("nsm", c); err != nil {
 		logger.Fatalf("error processing rootConf from env: %+v", err)
 	}
 
-	logger.Infof("rootConf: %+v", rootConf)
+	logger.Infof("rootConf: %+v", c)
 
 	// ********************************************************************************
 	// Get a x509Source
@@ -112,19 +112,19 @@ func main() {
 	// ********************************************************************************
 	// Dial to NSManager
 	// ********************************************************************************
-	dialCtx, cancel := context.WithTimeout(ctx, rootConf.DialTimeout)
+	dialCtx, cancel := context.WithTimeout(ctx, c.DialTimeout)
 	defer cancel()
 
-	logger.Infof("NSC: Connecting to Network Service Manager %v", rootConf.ConnectTo.String())
+	logger.Infof("NSC: Connecting to Network Service Manager %v", c.ConnectTo.String())
 	cc, err := grpc.DialContext(
 		dialCtx,
-		grpcutils.URLToTarget(&rootConf.ConnectTo),
+		grpcutils.URLToTarget(&c.ConnectTo),
 		append(opentracing.WithTracingDial(),
 			grpcfd.WithChainStreamInterceptor(),
 			grpcfd.WithChainUnaryInterceptor(),
 			grpc.WithDefaultCallOptions(
 				grpc.WaitForReady(true),
-				grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, rootConf.MaxTokenLifetime))),
+				grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, c.MaxTokenLifetime))),
 			),
 			grpc.WithTransportCredentials(
 				grpcfd.TransportCredentials(
@@ -142,7 +142,7 @@ func main() {
 	// ********************************************************************************
 	nsmClient := client.NewClient(ctx,
 		cc,
-		client.WithName(rootConf.Name),
+		client.WithName(c.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
 		client.WithAdditionalFunctionality(
 			sriovtoken.NewClient(),
@@ -153,6 +153,8 @@ func main() {
 			sendfd.NewClient(),
 		))
 
+	monitorClient := networkservice.NewMonitorConnectionClient(cc)
+
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
@@ -160,14 +162,37 @@ func main() {
 	// ********************************************************************************
 	// Initiate connections
 	// ********************************************************************************
-	for i := 0; i < len(rootConf.NetworkServices); i++ {
+	for i := 0; i < len(c.NetworkServices); i++ {
 		// Update network services configs
-		u := (*nsurl.NSURL)(&rootConf.NetworkServices[i])
+		u := (*nsurl.NSURL)(&c.NetworkServices[i])
+
+		id := fmt.Sprintf("%s-%d", c.Name, i)
+
+		monitorCtx, cancelMonitor := context.WithTimeout(ctx, c.RequestTimeout)
+		defer cancelMonitor()
+
+		stream, err := monitorClient.MonitorConnections(monitorCtx, &networkservice.MonitorScopeSelector{
+			PathSegments: []*networkservice.PathSegment{
+				{
+					Id: id,
+				},
+			},
+		})
+
+		if err != nil {
+			logger.Fatal(err.Error())
+		}
+
+		event, err := stream.Recv()
+
+		if err != nil {
+			logger.Fatal(err.Error())
+		}
 
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
 			Connection: &networkservice.Connection{
-				Id:             fmt.Sprintf("%s-%d", rootConf.Name, i),
+				Id:             id,
 				NetworkService: u.NetworkService(),
 				Labels:         u.Labels(),
 			},
@@ -176,7 +201,11 @@ func main() {
 			},
 		}
 
-		requestCtx, cancelRequest := context.WithTimeout(ctx, rootConf.RequestTimeout)
+		if conn, ok := event.Connections[id]; ok {
+			request.Connection = conn
+		}
+
+		requestCtx, cancelRequest := context.WithTimeout(ctx, c.RequestTimeout)
 		defer cancelRequest()
 
 		resp, err := nsmClient.Request(requestCtx, request)
@@ -186,7 +215,7 @@ func main() {
 		}
 
 		defer func() {
-			closeCtx, cancelClose := context.WithTimeout(context.Background(), rootConf.RequestTimeout)
+			closeCtx, cancelClose := context.WithTimeout(context.Background(), c.RequestTimeout)
 			defer cancelClose()
 			_, _ = nsmClient.Close(closeCtx, resp)
 		}()

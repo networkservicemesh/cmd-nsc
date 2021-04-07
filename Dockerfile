@@ -1,4 +1,4 @@
-FROM golang:1.15-buster as go
+FROM golang:1.16-buster as go
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 ENV GOBIN=/bin
@@ -9,6 +9,9 @@ RUN dl https://github.com/spiffe/spire/releases/download/v0.11.1/spire-0.11.1-li
 
 FROM go as build
 WORKDIR /build
+COPY go.mod go.sum ./
+COPY ./internal/imports imports
+RUN go build ./imports
 COPY . .
 RUN go build -o /bin/app .
 
