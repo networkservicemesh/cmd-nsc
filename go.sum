@@ -1,4 +1,6 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
+github.com/Bolodya1997/sdk v0.0.0-20210413055531-95bc35aed1e0 h1:p8GuRyU7Pamm64+7clQfkynM/IO83r/sUd3wN81dw3M=
+github.com/Bolodya1997/sdk v0.0.0-20210413055531-95bc35aed1e0/go.mod h1:phKpePEEcubYjKnVzfdqoTQCmzdcToXRdLDA1o8nYDM=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DataDog/datadog-go v2.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/HdrHistogram/hdrhistogram-go v1.0.1 h1:GX8GAYDuhlFQnI2fRDHQhTlkHMz8bEn0jTI6LJU0mpw=
@@ -27,6 +29,7 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
+github.com/edwarnicke/exechelper v1.0.2 h1:dD49Ui2U0FBFxxhalnKw6vLS0P0TkgnXBRvKL/xmC5w=
 github.com/edwarnicke/exechelper v1.0.2/go.mod h1:/T271jtNX/ND4De6pa2aRy2+8sNtyCDB1A2pp4M+fUs=
 github.com/edwarnicke/grpcfd v0.0.0-20210219150442-10fb469a6976 h1:qYvyZmwMS7wdlMlf/r8jPeBUIkjuPO/Ns9T7g1p7c2A=
 github.com/edwarnicke/grpcfd v0.0.0-20210219150442-10fb469a6976/go.mod h1:rHihB9YvNMixz8rS+ZbwosI2kj65VLkeyYAI2M+/cGA=
@@ -74,6 +77,7 @@ github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.2 h1:X2ev0eStA3AbceY54o37/0PQ/UWqKEiiO2dKL5OPaFM=
 github.com/google/go-cmp v0.5.2/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
+github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 h1:El6M4kTTCOh6aBiKaUGG7oYTSPP8MxqL4YI3kZKwcP4=
 github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510/go.mod h1:pupxD2MaaD3pAXIBCelhxNneeOaAeabZDe5s4K6zSpQ=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.2.0 h1:qJYtXnJRWmpe7m/3XlyhrsLrEURqHRM2kxzoxXqyUDs=
@@ -119,8 +123,6 @@ github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OS
 github.com/nats-io/stan.go v0.6.0/go.mod h1:eIcD5bi3pqbHT/xIIvXMwvzXYElgouBvaVRftaE+eac=
 github.com/networkservicemesh/api v0.0.0-20210403165646-b0b334ca6872 h1:Eg8ZgcJ0bukl10gHNVpF4lXDwg5JHig7E4RM2SdJ29k=
 github.com/networkservicemesh/api v0.0.0-20210403165646-b0b334ca6872/go.mod h1:8daUQzI8sUvvNiPF6G3esmEvNQM/lJuAOobjdgtq2FM=
-github.com/networkservicemesh/sdk v0.0.0-20210405062928-0d2dc281b97c h1:svZvtDPB44iv6QoCgVbVDN4gPyiyQGzHZ/gTr5TTTwQ=
-github.com/networkservicemesh/sdk v0.0.0-20210405062928-0d2dc281b97c/go.mod h1:phKpePEEcubYjKnVzfdqoTQCmzdcToXRdLDA1o8nYDM=
 github.com/networkservicemesh/sdk-kernel v0.0.0-20210413130712-233d8554cd69 h1:I7Zdd7lZ2J0iGnJZE00aMce0hmZW1eDkSGi3xZDR+Fg=
 github.com/networkservicemesh/sdk-kernel v0.0.0-20210413130712-233d8554cd69/go.mod h1:2nCYdaEvRpz1IRejZqCw40tS0B8ZO0rIfaqSHcpcD08=
 github.com/networkservicemesh/sdk-sriov v0.0.0-20210413131058-5f0af01ea8ab h1:BaxHZMkPjjMmLK1RKRd+Ov5FOhEL2mg7G5FsqX8bdUA=

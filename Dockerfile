@@ -13,7 +13,7 @@ COPY go.mod go.sum ./
 COPY ./internal/imports imports
 RUN go build ./imports
 COPY . .
-RUN go build -o /bin/app .
+RUN go build -o /bin/nsc .
 
 FROM build as test
 CMD go test -test.v ./...
@@ -22,5 +22,5 @@ FROM test as debug
 CMD dlv -l :40000 --headless=true --api-version=2 test -test.v ./...
 
 FROM alpine as runtime
-COPY --from=build /bin/app /bin/app
-CMD /bin/app
+COPY --from=build /bin/nsc /bin/nsc
+CMD /bin/nsc
