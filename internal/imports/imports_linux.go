@@ -25,7 +25,6 @@ import (
 	_ "github.com/networkservicemesh/sdk/pkg/tools/log/logruslogger"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/nsurl"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/opentracing"
-	_ "github.com/networkservicemesh/sdk/pkg/tools/signalctx"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/token"
 	_ "github.com/pkg/errors"
@@ -38,6 +37,8 @@ import (
 	_ "google.golang.org/grpc/credentials"
 	_ "net/url"
 	_ "os"
+	_ "os/signal"
+	_ "syscall"
 	_ "testing"
 	_ "time"
 )

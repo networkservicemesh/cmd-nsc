@@ -23,6 +23,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
@@ -51,7 +53,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/log/logruslogger"
 	"github.com/networkservicemesh/sdk/pkg/tools/nsurl"
 	"github.com/networkservicemesh/sdk/pkg/tools/opentracing"
-	"github.com/networkservicemesh/sdk/pkg/tools/signalctx"
 	"github.com/networkservicemesh/sdk/pkg/tools/spiffejwt"
 	"github.com/networkservicemesh/sdk/pkg/tools/token"
 
@@ -62,9 +63,14 @@ func main() {
 	// ********************************************************************************
 	// Configure signal handling context
 	// ********************************************************************************
-	ctx := signalctx.WithSignals(context.Background())
-	var cancel context.CancelFunc
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		// More Linux signals here
+		syscall.SIGHUP,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
 	defer cancel()
 
 	// ********************************************************************************
