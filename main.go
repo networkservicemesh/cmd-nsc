@@ -207,8 +207,13 @@ func main() {
 			},
 		}
 
-		if conn, ok := event.Connections[id]; ok {
-			request.Connection = conn
+		for _, conn := range event.Connections {
+			if conn.GetPath().PathSegments[0].Id == id && conn.Mechanism.Type == u.Mechanism().Type {
+				request.Connection = conn
+				request.Connection.Path.Index = 0
+				request.Connection.Id = id
+				break
+			}
 		}
 
 		requestCtx, cancelRequest := context.WithTimeout(ctx, c.RequestTimeout)
