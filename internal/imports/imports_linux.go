@@ -18,6 +18,7 @@ import (
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
+	_ "github.com/networkservicemesh/sdk/pkg/networkservice/connectioncontext/dnscontext"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/jaeger"
