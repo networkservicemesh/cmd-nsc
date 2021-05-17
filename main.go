@@ -229,6 +229,7 @@ func main() {
 
 		defer func() {
 			closeCtx, cancelClose := context.WithTimeout(context.Background(), c.RequestTimeout)
+			closeCtx = log.WithFields(closeCtx, log.Fields(ctx))
 			defer cancelClose()
 			_, _ = nsmClient.Close(closeCtx, resp)
 		}()
