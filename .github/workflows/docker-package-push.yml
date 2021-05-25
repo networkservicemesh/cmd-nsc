@@ -35,4 +35,4 @@ jobs:
           context: .
           push: true
           tags: |
-            networkservicemesh/latest
+            networkservicemesh/cmd-nsc:latest
