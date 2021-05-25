@@ -1,8 +1,9 @@
+---
 name: docker-push-package
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   docker:
