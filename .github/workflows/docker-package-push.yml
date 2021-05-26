@@ -35,4 +35,4 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/networkservicemesh/cmd-nsc/ci:${GITHUB_SHA::8}
+            ghcr.io/networkservicemesh/cmd-nsc/ci:latest
