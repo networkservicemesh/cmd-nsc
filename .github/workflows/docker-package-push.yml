@@ -35,4 +35,4 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/networkservicemesh/cmd-nsc/ci:latest
+            ghcr.io/networkservicemesh/release/cmd-nsc:latest
