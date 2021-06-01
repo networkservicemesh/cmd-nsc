@@ -1,5 +1,5 @@
 ---
-name: docker-push-package
+name: docker-push-ghcr
 
 on:
   push:
@@ -35,4 +35,4 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/networkservicemesh/release/cmd-nsc:latest
+            ghcr.io/${GITHUB_REPOSITORY}:${GITHUB_SHA::8}
