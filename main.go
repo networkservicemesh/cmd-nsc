@@ -117,38 +117,26 @@ func main() {
 	logger.Infof("sVID: %q", svid.ID)
 
 	// ********************************************************************************
-	// Dial to NSManager
-	// ********************************************************************************
-	dialCtx, cancel := context.WithTimeout(ctx, c.DialTimeout)
-	defer cancel()
-
-	logger.Infof("NSC: Connecting to Network Service Manager %v", c.ConnectTo.String())
-	cc, err := grpc.DialContext(
-		dialCtx,
-		grpcutils.URLToTarget(&c.ConnectTo),
-		append(opentracing.WithTracingDial(),
-			grpcfd.WithChainStreamInterceptor(),
-			grpcfd.WithChainUnaryInterceptor(),
-			grpc.WithDefaultCallOptions(
-				grpc.WaitForReady(true),
-				grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, c.MaxTokenLifetime))),
-			),
-			grpc.WithTransportCredentials(
-				grpcfd.TransportCredentials(
-					credentials.NewTLS(
-						tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()),
-					),
-				),
-			))...,
-	)
-	if err != nil {
-		logger.Fatalf("failed dial to NSMgr: %v", err.Error())
-	}
-	// ********************************************************************************
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
+	dialOptions := append(opentracing.WithTracingDial(),
+		grpcfd.WithChainStreamInterceptor(),
+		grpcfd.WithChainUnaryInterceptor(),
+		grpc.WithDefaultCallOptions(
+			grpc.WaitForReady(true),
+			grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, c.MaxTokenLifetime))),
+		),
+		grpc.WithTransportCredentials(
+			grpcfd.TransportCredentials(
+				credentials.NewTLS(
+					tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny()),
+				),
+			),
+		),
+	)
+
 	nsmClient := client.NewClient(ctx,
-		cc,
+		&c.ConnectTo,
 		client.WithName(c.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
 		client.WithAdditionalFunctionality(
@@ -159,13 +147,24 @@ func main() {
 			}),
 			sendfd.NewClient(),
 			dnscontext.NewClient(dnscontext.WithChainContext(ctx)),
-		))
+		),
+		client.WithDialTimeout(c.DialTimeout),
+		client.WithDialOptions(dialOptions...),
+	)
+
+	// ********************************************************************************
+	// Create Network Service Manager monitorClient
+	// ********************************************************************************
+	dialCtx, cancel := context.WithTimeout(ctx, c.DialTimeout)
+	defer cancel()
+
+	logger.Infof("NSC: Connecting to Network Service Manager %v", c.ConnectTo.String())
+	cc, err := grpc.DialContext(dialCtx, grpcutils.URLToTarget(&c.ConnectTo), dialOptions...)
+	if err != nil {
+		logger.Fatalf("failed dial to NSMgr: %v", err.Error())
+	}
 
 	monitorClient := networkservice.NewMonitorConnectionClient(cc)
-
-	// ********************************************************************************
-	// Create Network Service Manager nsmClient
-	// ********************************************************************************
 
 	// ********************************************************************************
 	// Initiate connections
