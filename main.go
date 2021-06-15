@@ -61,17 +61,7 @@ import (
 )
 
 func main() {
-	// ********************************************************************************
-	// Configure signal handling context
-	// ********************************************************************************
-	ctx, cancel := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		// More Linux signals here
-		syscall.SIGHUP,
-		syscall.SIGTERM,
-		syscall.SIGQUIT,
-	)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// ********************************************************************************
@@ -153,10 +143,23 @@ func main() {
 	)
 
 	// ********************************************************************************
+	// Configure signal handling context
+	// ********************************************************************************
+	signalCtx, cancelSignalCtx := signal.NotifyContext(
+		ctx,
+		os.Interrupt,
+		// More Linux signals here
+		syscall.SIGHUP,
+		syscall.SIGTERM,
+		syscall.SIGQUIT,
+	)
+	defer cancelSignalCtx()
+
+	// ********************************************************************************
 	// Create Network Service Manager monitorClient
 	// ********************************************************************************
-	dialCtx, cancel := context.WithTimeout(ctx, c.DialTimeout)
-	defer cancel()
+	dialCtx, cancelDial := context.WithTimeout(signalCtx, c.DialTimeout)
+	defer cancelDial()
 
 	logger.Infof("NSC: Connecting to Network Service Manager %v", c.ConnectTo.String())
 	cc, err := grpc.DialContext(dialCtx, grpcutils.URLToTarget(&c.ConnectTo), dialOptions...)
@@ -175,7 +178,7 @@ func main() {
 
 		id := fmt.Sprintf("%s-%d", c.Name, i)
 
-		monitorCtx, cancelMonitor := context.WithTimeout(ctx, c.RequestTimeout)
+		monitorCtx, cancelMonitor := context.WithTimeout(signalCtx, c.RequestTimeout)
 		defer cancelMonitor()
 
 		stream, err := monitorClient.MonitorConnections(monitorCtx, &networkservice.MonitorScopeSelector{
@@ -185,13 +188,11 @@ func main() {
 				},
 			},
 		})
-
 		if err != nil {
 			logger.Fatal(err.Error())
 		}
 
 		event, err := stream.Recv()
-
 		if err != nil {
 			logger.Fatal(err.Error())
 		}
@@ -221,14 +222,12 @@ func main() {
 		defer cancelRequest()
 
 		resp, err := nsmClient.Request(requestCtx, request)
-
 		if err != nil {
 			logger.Fatalf("failed connect to NSMgr: %v", err.Error())
 		}
 
 		defer func() {
-			closeCtx, cancelClose := context.WithTimeout(context.Background(), c.RequestTimeout)
-			closeCtx = log.WithFields(closeCtx, log.Fields(ctx))
+			closeCtx, cancelClose := context.WithTimeout(ctx, c.RequestTimeout)
 			defer cancelClose()
 			_, _ = nsmClient.Close(closeCtx, resp)
 		}()
@@ -237,5 +236,5 @@ func main() {
 	}
 
 	// Wait for cancel event to terminate
-	<-ctx.Done()
+	<-signalCtx.Done()
 }
