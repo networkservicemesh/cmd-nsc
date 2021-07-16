@@ -210,7 +210,8 @@ func main() {
 		}
 
 		for _, conn := range event.Connections {
-			if conn.GetPath().PathSegments[0].Id == id && conn.Mechanism.Type == u.Mechanism().Type {
+			path := conn.GetPath()
+			if path.Index == 1 && path.PathSegments[0].Id == id && conn.Mechanism.Type == u.Mechanism().Type {
 				request.Connection = conn
 				request.Connection.Path.Index = 0
 				request.Connection.Id = id
