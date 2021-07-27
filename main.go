@@ -196,6 +196,7 @@ func main() {
 		if err != nil {
 			logger.Fatal(err.Error())
 		}
+		cancelMonitor()
 
 		// Construct a request
 		request := &networkservice.NetworkServiceRequest{
