@@ -90,6 +90,12 @@ func main() {
 		logger.Fatalf("error processing rootConf from env: %+v", err)
 	}
 
+	level, err := logrus.ParseLevel(c.LogLevel)
+	if err != nil {
+		logrus.Fatalf("invalid log level %s", c.LogLevel)
+	}
+	logrus.SetLevel(level)
+
 	logger.Infof("rootConf: %+v", c)
 
 	// ********************************************************************************
