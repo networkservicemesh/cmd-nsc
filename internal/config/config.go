@@ -36,6 +36,7 @@ type Config struct {
 	Mechanism string   `default:"kernel" desc:"Default Mechanism to use, supported values: kernel, vfio" split_words:"true"`
 
 	NetworkServices []url.URL `default:"" desc:"A list of Network Service Requests" split_words:"true"`
+	LogLevel        string    `default:"INFO" desc:"Log level" split_words:"true"`
 }
 
 // IsValid - check if configuration is valid
