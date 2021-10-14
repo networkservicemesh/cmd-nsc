@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build !windows
+// +build linux
 
 // Package main define a nsc application
 package main
@@ -132,7 +132,7 @@ func main() {
 	)
 
 	nsmClient := client.NewClient(ctx,
-		&c.ConnectTo,
+		client.WithClientURL(&c.ConnectTo),
 		client.WithName(c.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
 		client.WithAdditionalFunctionality(
