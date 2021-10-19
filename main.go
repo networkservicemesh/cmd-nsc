@@ -25,6 +25,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
@@ -119,7 +120,6 @@ func main() {
 		grpcfd.WithChainStreamInterceptor(),
 		grpcfd.WithChainUnaryInterceptor(),
 		grpc.WithDefaultCallOptions(
-			grpc.WaitForReady(true),
 			grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, c.MaxTokenLifetime))),
 		),
 		grpc.WithTransportCredentials(
@@ -226,21 +226,37 @@ func main() {
 			}
 		}
 
-		requestCtx, cancelRequest := context.WithTimeout(ctx, c.RequestTimeout)
-		defer cancelRequest()
-
-		resp, err := nsmClient.Request(requestCtx, request)
-		if err != nil {
-			logger.Fatalf("failed connect to NSMgr: %v", err.Error())
+		retryCtx, retryCancel := context.WithCancel(ctx)
+		if c.RequestTimeout != 0 {
+			retryCtx, retryCancel = context.WithTimeout(ctx, c.RetryTimeout)
+			defer retryCancel()
 		}
 
-		defer func() {
-			closeCtx, cancelClose := context.WithTimeout(ctx, c.RequestTimeout)
-			defer cancelClose()
-			_, _ = nsmClient.Close(closeCtx, resp)
-		}()
+		for {
+			requestCtx, cancelRequest := context.WithTimeout(ctx, c.RequestTimeout)
+			defer cancelRequest()
 
-		logger.Infof("successfully connected to %v. Response: %v", u.NetworkService(), resp)
+			resp, err := nsmClient.Request(requestCtx, request)
+			if err != nil {
+				logger.Errorf("failed connect to NSMgr: %v", err.Error())
+				select {
+				case <-retryCtx.Done():
+					logger.Fatalf("failed to connect to %s after %d retries")
+				default:
+					time.Sleep(c.RetryInterval)
+				}
+				continue
+			}
+
+			defer func() {
+				closeCtx, cancelClose := context.WithTimeout(ctx, c.RequestTimeout)
+				defer cancelClose()
+				_, _ = nsmClient.Close(closeCtx, resp)
+			}()
+
+			logger.Infof("successfully connected to %v. Response: %v", u.NetworkService(), resp)
+			break
+		}
 	}
 
 	// Wait for cancel event to terminate
