@@ -46,6 +46,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/retry"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/connectioncontext/dnscontext"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
@@ -148,6 +149,8 @@ func main() {
 		client.WithDialOptions(dialOptions...),
 	)
 
+	nsmClient = retry.NewClient(nsmClient, retry.WithTryTimeout(c.RequestTimeout))
+
 	// ********************************************************************************
 	// Configure signal handling context
 	// ********************************************************************************
@@ -226,10 +229,7 @@ func main() {
 			}
 		}
 
-		requestCtx, cancelRequest := context.WithTimeout(ctx, c.RequestTimeout)
-		defer cancelRequest()
-
-		resp, err := nsmClient.Request(requestCtx, request)
+		resp, err := nsmClient.Request(ctx, request)
 		if err != nil {
 			logger.Fatalf("failed connect to NSMgr: %v", err.Error())
 		}
