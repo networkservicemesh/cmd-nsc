@@ -30,6 +30,8 @@ type Config struct {
 	ConnectTo        url.URL       `default:"unix:///var/lib/networkservicemesh/nsm.io.sock" desc:"url to connect to NSM" split_words:"true"`
 	DialTimeout      time.Duration `default:"5s" desc:"timeout to dial NSMgr" split_words:"true"`
 	RequestTimeout   time.Duration `default:"15s" desc:"timeout to request NSE" split_words:"true"`
+	RetryTimeout     time.Duration `default:"0s" desc:"retry timeout" split_words:"true"`
+	RetryInterval    time.Duration `default:"100ms" desc:"retry interval" split_words:"true"`
 	MaxTokenLifetime time.Duration `default:"10m" desc:"maximum lifetime of tokens" split_words:"true"`
 
 	Labels    []string `default:"" desc:"A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services" split_words:"true"`
