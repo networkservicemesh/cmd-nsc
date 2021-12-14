@@ -15,6 +15,7 @@ import (
 	_ "github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/token"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/authorize"
+	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/excludedprefixes"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/heal"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
