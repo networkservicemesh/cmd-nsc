@@ -97,6 +97,14 @@ func main() {
 
 	logger.Infof("rootConf: %+v", c)
 
+	for _, line := range c.AwarenessGroups {
+		for _, item := range line {
+			logger.Errorf("%s\n", item)
+		}
+
+		logger.Error("---------------------")
+	}
+
 	// ********************************************************************************
 	// Configure Open Telemetry
 	// ********************************************************************************
