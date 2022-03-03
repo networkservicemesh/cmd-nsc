@@ -25,18 +25,20 @@ import (
 	"github.com/pkg/errors"
 )
 
-type AwarenessGroupsDecoder [][]string
+type awarenessGroupsDecoder [][]string
 
-func (agd *AwarenessGroupsDecoder) Decode(value string) {
-	awarenessGroups := [][]string{}
-	groups := strings.Split(value, ";")
-	for i, list := range groups {
+func (agd *awarenessGroupsDecoder) Decode(value string) error {
+	value = strings.ReplaceAll(value, " ", "")
+	lists := strings.Split(value, "],[")
+	awarenessGroups := make([][]string, len(lists))
+	for i, list := range lists {
 		list = strings.Trim(list, "[]")
 		groupItems := strings.Split(list, ",")
 		awarenessGroups[i] = append(awarenessGroups[i], groupItems...)
 	}
 
-	*agd = AwarenessGroupsDecoder(awarenessGroups)
+	*agd = awarenessGroupsDecoder(awarenessGroups)
+	return nil
 }
 
 // Config - configuration for cmd-nsmgr
@@ -51,7 +53,7 @@ type Config struct {
 	Mechanism string   `default:"kernel" desc:"Default Mechanism to use, supported values: kernel, vfio" split_words:"true"`
 
 	NetworkServices       []url.URL              `default:"" desc:"A list of Network Service Requests" split_words:"true"`
-	AwarenessGroups       AwarenessGroupsDecoder `defailt:"" desc:"Awareness groups for mutually awared NSEs" split_words:"true"`
+	AwarenessGroups       awarenessGroupsDecoder `defailt:"" desc:"Awareness groups for mutually awared NSEs" split_words:"true"`
 	LogLevel              string                 `default:"INFO" desc:"Log level" split_words:"true"`
 	OpenTelemetryEndpoint string                 `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint"`
 }
