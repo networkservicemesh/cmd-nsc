@@ -25,16 +25,22 @@ import (
 	"github.com/pkg/errors"
 )
 
-type awarenessGroupsDecoder [][]string
+type awarenessGroupsDecoder [][]*url.URL
 
 func (agd *awarenessGroupsDecoder) Decode(value string) error {
 	value = strings.ReplaceAll(value, " ", "")
 	lists := strings.Split(value, "],[")
-	awarenessGroups := make([][]string, len(lists))
+	awarenessGroups := make([][]*url.URL, len(lists))
 	for i, list := range lists {
 		list = strings.Trim(list, "[]")
 		groupItems := strings.Split(list, ",")
-		awarenessGroups[i] = append(awarenessGroups[i], groupItems...)
+		for _, item := range groupItems {
+			nsurl, err := url.Parse(item)
+			if err != nil {
+				return err
+			}
+			awarenessGroups[i] = append(awarenessGroups[i], nsurl)
+		}
 	}
 
 	*agd = awarenessGroupsDecoder(awarenessGroups)
