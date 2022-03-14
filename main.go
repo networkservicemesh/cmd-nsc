@@ -158,7 +158,7 @@ func main() {
 			}),
 			sendfd.NewClient(),
 			dnscontext.NewClient(dnscontext.WithChainContext(ctx)),
-			excludedprefixes.NewClient(),
+			excludedprefixes.NewClient(excludedprefixes.WithAwarenessGroups(c.AwarenessGroups)),
 		),
 		client.WithDialTimeout(c.DialTimeout),
 		client.WithDialOptions(dialOptions...),
