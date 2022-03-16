@@ -22,6 +22,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/networkservicemesh/sdk/pkg/tools/awarenessgroups"
 )
 
 // Config - configuration for cmd-nsmgr
@@ -35,9 +37,10 @@ type Config struct {
 	Labels    []string `default:"" desc:"A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services" split_words:"true"`
 	Mechanism string   `default:"kernel" desc:"Default Mechanism to use, supported values: kernel, vfio" split_words:"true"`
 
-	NetworkServices       []url.URL `default:"" desc:"A list of Network Service Requests" split_words:"true"`
-	LogLevel              string    `default:"INFO" desc:"Log level" split_words:"true"`
-	OpenTelemetryEndpoint string    `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint"`
+	NetworkServices       []url.URL               `default:"" desc:"A list of Network Service Requests" split_words:"true"`
+	AwarenessGroups       awarenessgroups.Decoder `defailt:"" desc:"Awareness groups for mutually aware NSEs" split_words:"true"`
+	LogLevel              string                  `default:"INFO" desc:"Log level" split_words:"true"`
+	OpenTelemetryEndpoint string                  `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint"`
 }
 
 // IsValid - check if configuration is valid
