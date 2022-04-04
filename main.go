@@ -1,5 +1,7 @@
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2022 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +25,16 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/grpcfd"
+	"github.com/go-ping/ping"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
@@ -63,6 +69,63 @@ import (
 
 	"github.com/networkservicemesh/cmd-nsc/internal/config"
 )
+
+const (
+	livenessPingInterval = 200 * time.Millisecond
+	livenessPingTimeout  = 100 * time.Millisecond
+)
+
+func pingCIDR(cidr string) bool {
+	addr, _, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return false
+	}
+	pinger, err := ping.NewPinger(addr.String())
+	if err != nil {
+		return false
+	}
+	pinger.SetPrivileged(true)
+	// Pinger works in singel-shot mode when we assign timeout
+	// Without timeout it will block forever and doesn't stop even when the dest address gone
+	pinger.Timeout = livenessPingTimeout
+	err = pinger.Run()
+	if err != nil {
+		return false
+	}
+	stats := pinger.Statistics()
+	return stats.PacketsRecv > 0
+}
+
+var livenessChecks = sync.Map{}
+
+func livenessCheck(conn *networkservice.Connection) bool {
+	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
+		_, ok := livenessChecks.Load(cidr)
+		if ok {
+			return true
+		}
+
+		alive := pingCIDR(cidr)
+		if !alive {
+			continue
+		}
+
+		livenessChecks.Store(cidr, struct{}{})
+
+		go func() {
+			defer livenessChecks.Delete(cidr)
+			for {
+				<-time.After(livenessPingInterval)
+				if !pingCIDR(cidr) {
+					return
+				}
+			}
+		}()
+
+		return true
+	}
+	return false
+}
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -149,7 +212,7 @@ func main() {
 		client.WithClientURL(&c.ConnectTo),
 		client.WithName(c.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
-		client.WithHealClient(heal.NewClient(ctx)),
+		client.WithHealClient(heal.NewClient(ctx, heal.WithLivelinessCheck(livenessCheck))),
 		client.WithAdditionalFunctionality(
 			sriovtoken.NewClient(),
 			mechanisms.NewClient(map[string]networkservice.NetworkServiceClient{

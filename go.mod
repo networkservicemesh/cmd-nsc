@@ -5,6 +5,7 @@ go 1.16
 require (
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
 	github.com/edwarnicke/grpcfd v1.1.2
+	github.com/go-ping/ping v0.0.0-20211130115550-779d1e919534
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/networkservicemesh/api v1.2.1-0.20220315001249-f33f8c3f2feb
 	github.com/networkservicemesh/sdk v0.5.1-0.20220328192928-739e3867a1b0
