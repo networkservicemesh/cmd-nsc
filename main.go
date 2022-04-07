@@ -72,7 +72,7 @@ func main() {
 	// Setup logger
 	// ********************************************************************************
 	log.EnableTracing(true)
-	logrus.Info("Starting NetworkServiceMesh Client ...")
+	logrus.Info("Starting NetworkServiceMesh Client  ...")
 	logrus.SetFormatter(&nested.Formatter{})
 	ctx = log.WithLog(ctx, logruslogger.New(ctx, map[string]interface{}{"cmd": os.Args[:1]}))
 
