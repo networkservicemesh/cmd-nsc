@@ -15,3 +15,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.42.0
 )
+
+replace github.com/networkservicemesh/sdk => github.com/xzfc/networkservicemesh-sdk v0.0.0-20220414232223-3a19549f4efa
+
+replace github.com/networkservicemesh/sdk-kernel => github.com/xzfc/networkservicemesh-sdk-kernel v0.0.0-20220415114510-21e40d2cba48

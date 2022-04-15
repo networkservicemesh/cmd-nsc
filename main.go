@@ -1,5 +1,7 @@
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2022 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +38,8 @@ import (
 	"github.com/spiffe/go-spiffe/v2/workloadapi"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	kernelheal "github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/heal"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	kernelmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
@@ -149,7 +153,7 @@ func main() {
 		client.WithClientURL(&c.ConnectTo),
 		client.WithName(c.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
-		client.WithHealClient(heal.NewClient(ctx)),
+		client.WithHealClient(heal.NewClient(ctx, heal.WithLivenessChecker(kernelheal.ICMPLivenessChecker))),
 		client.WithAdditionalFunctionality(
 			sriovtoken.NewClient(),
 			mechanisms.NewClient(map[string]networkservice.NetworkServiceClient{
