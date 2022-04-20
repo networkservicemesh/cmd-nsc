@@ -11,6 +11,7 @@ import (
 	_ "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/common"
 	_ "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	_ "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vfio"
+	_ "github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/heal"
 	_ "github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/mechanisms/vfio"
 	_ "github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/token"
 	_ "github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
