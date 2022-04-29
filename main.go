@@ -130,6 +130,7 @@ func main() {
 	}
 	logger.Infof("sVID: %q", svid.ID)
 
+	logger.Info("MY_INFO")
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
@@ -153,7 +154,12 @@ func main() {
 		client.WithClientURL(&c.ConnectTo),
 		client.WithName(c.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
-		client.WithHealClient(heal.NewClient(ctx, heal.WithLivenessChecker(kernelheal.ICMPLivenessChecker))),
+		client.WithHealClient(
+			heal.NewClient(
+				ctx,
+				heal.WithLivenessChecker(kernelheal.ICMPLivenessChecker),
+				heal.WithLivenessCheckInterval(c.LivenessCheckInterval),
+				heal.WithLivenessCheckTimeout(c.LivenessCheckTimeout))),
 		client.WithAdditionalFunctionality(
 			sriovtoken.NewClient(),
 			mechanisms.NewClient(map[string]networkservice.NetworkServiceClient{
