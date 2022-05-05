@@ -156,7 +156,7 @@ func main() {
 		client.WithHealClient(
 			heal.NewClient(
 				ctx,
-				heal.WithLivenessCheck(kernelheal.NewKernelLivenessCheck),
+				heal.WithLivenessCheck(kernelheal.KernelLivenessCheck),
 				heal.WithLivenessCheckInterval(c.LivenessCheckInterval),
 				heal.WithLivenessCheckTimeout(c.LivenessCheckTimeout))),
 		client.WithAdditionalFunctionality(
