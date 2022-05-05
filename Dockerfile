@@ -11,7 +11,6 @@ FROM go as build
 WORKDIR /build
 COPY go.mod go.sum ./
 COPY ./internal/imports imports
-COPY ./local ./local
 RUN go build ./imports
 COPY . .
 RUN go build -o /bin/app .
