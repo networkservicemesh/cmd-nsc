@@ -8,14 +8,11 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/networkservicemesh/api v1.3.0-rc.1.0.20220405210054-fbcde048efa5
 	github.com/networkservicemesh/sdk v0.5.1-0.20220505102418-8d6762737896
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20220505140026-a0c110da4f69
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20220505102750-b3ec72b7dfa8
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20220505103434-6e176f2d8bc4
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spiffe/go-spiffe/v2 v2.0.0
 	github.com/stretchr/testify v1.7.0
 	google.golang.org/grpc v1.42.0
 )
-
-replace github.com/networkservicemesh/sdk => ./local/sdk
-
-replace github.com/networkservicemesh/sdk-kernel => ./local/sdk-kernel
