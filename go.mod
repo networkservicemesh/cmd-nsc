@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/antonfisher/nested-logrus-formatter v1.3.1
+	github.com/edwarnicke/exechelper v1.0.2
 	github.com/edwarnicke/grpcfd v1.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/networkservicemesh/api v1.3.2-0.20220509143420-a1414febd727
