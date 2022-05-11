@@ -24,12 +24,15 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
+	"github.com/coredns/coredns/coremain"
 	"github.com/edwarnicke/grpcfd"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -98,6 +101,22 @@ func main() {
 		logrus.Fatalf("invalid log level %s", c.LogLevel)
 	}
 	logrus.SetLevel(level)
+
+	var errCh = make(chan error, 1)
+	if _, err = os.Stat(c.CorefilePath); err == nil {
+		go func() {
+			var setFlagErr = flag.Set("conf", c.CorefilePath)
+			if setFlagErr != nil {
+				errCh <- setFlagErr
+				return
+			}
+			defer func() {
+				var corednsErr = recover()
+				errCh <- errors.New(fmt.Sprint(corednsErr))
+			}()
+			coremain.Run()
+		}()
+	}
 
 	logger.Infof("rootConf: %+v", c)
 
@@ -267,6 +286,8 @@ func main() {
 		logger.Infof("successfully connected to %v. Response: %v", u.NetworkService(), resp)
 	}
 
-	// Wait for cancel event to terminate
-	<-signalCtx.Done()
+	select {
+	case <-signalCtx.Done():
+	case <-errCh:
+	}
 }
