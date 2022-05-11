@@ -43,7 +43,7 @@ type Config struct {
 	OpenTelemetryEndpoint string                  `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint"`
 
 	LivenessCheckInterval time.Duration `default:"200ms" desc:"Dataplane liveness check interval"`
-	LivenessCheckTimeout  time.Duration `default:"100ms" desc:"Dataplane liveness check timeout"`
+	LivenessCheckTimeout  time.Duration `default:"1s" desc:"Dataplane liveness check timeout"`
 }
 
 // IsValid - check if configuration is valid
