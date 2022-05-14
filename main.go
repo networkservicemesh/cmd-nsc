@@ -48,6 +48,7 @@ import (
 	sriovtoken "github.com/networkservicemesh/sdk-sriov/pkg/networkservice/common/token"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/authorize"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/clientinfo"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/excludedprefixes"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/heal"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
@@ -160,6 +161,7 @@ func main() {
 				heal.WithLivenessCheckInterval(c.LivenessCheckInterval),
 				heal.WithLivenessCheckTimeout(c.LivenessCheckTimeout))),
 		client.WithAdditionalFunctionality(
+			clientinfo.NewClient(),
 			sriovtoken.NewClient(),
 			mechanisms.NewClient(map[string]networkservice.NetworkServiceClient{
 				vfiomech.MECHANISM:   chain.NewNetworkServiceClient(vfio.NewClient()),
