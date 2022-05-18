@@ -134,8 +134,6 @@ func main() {
 
 	tlsClientConfig := tlsconfig.MTLSClientConfig(source, source, tlsconfig.AuthorizeAny())
 	tlsClientConfig.MinVersion = tls.VersionTLS12
-	tlsServerConfig := tlsconfig.MTLSServerConfig(source, source, tlsconfig.AuthorizeAny())
-	tlsServerConfig.MinVersion = tls.VersionTLS12
 
 	// ********************************************************************************
 	// Create Network Service Manager nsmClient
