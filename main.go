@@ -30,6 +30,7 @@ import (
 	"syscall"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
+	"github.com/edwarnicke/exechelper"
 	"github.com/edwarnicke/grpcfd"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -101,6 +102,11 @@ func main() {
 	logrus.SetLevel(level)
 
 	logger.Infof("rootConf: %+v", c)
+
+	var errCh <-chan error = make(chan error, 1)
+	if _, err = os.Stat(c.CorefilePath); err == nil {
+		errCh = exechelper.Start("/bin/coredns", exechelper.WithArgs("-conf="+c.CorefilePath))
+	}
 
 	// ********************************************************************************
 	// Configure Open Telemetry
@@ -270,5 +276,8 @@ func main() {
 	}
 
 	// Wait for cancel event to terminate
-	<-signalCtx.Done()
+	select {
+	case <-signalCtx.Done():
+	case <-errCh:
+	}
 }

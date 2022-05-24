@@ -5,6 +5,7 @@ import (
 	_ "context"
 	_ "fmt"
 	_ "github.com/antonfisher/nested-logrus-formatter"
+	_ "github.com/edwarnicke/exechelper"
 	_ "github.com/edwarnicke/grpcfd"
 	_ "github.com/kelseyhightower/envconfig"
 	_ "github.com/networkservicemesh/api/pkg/api/networkservice"
