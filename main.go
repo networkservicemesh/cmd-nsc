@@ -54,6 +54,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/common/null"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/retry"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/connectioncontext/dnscontext"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
@@ -150,6 +151,12 @@ func main() {
 		),
 	)
 
+	var dnsClient = null.NewClient()
+
+	if _, err = os.Stat(c.CoreDNSConfigPath); err == nil {
+		dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithCorefilePath(c.CoreDNSConfigPath))
+	}
+
 	nsmClient := client.NewClient(ctx,
 		client.WithClientURL(&c.ConnectTo),
 		client.WithName(c.Name),
@@ -168,7 +175,7 @@ func main() {
 				kernelmech.MECHANISM: chain.NewNetworkServiceClient(kernel.NewClient()),
 			}),
 			sendfd.NewClient(),
-			dnscontext.NewClient(dnscontext.WithChainContext(ctx)),
+			dnsClient,
 			excludedprefixes.NewClient(excludedprefixes.WithAwarenessGroups(c.AwarenessGroups)),
 		),
 		client.WithDialTimeout(c.DialTimeout),
