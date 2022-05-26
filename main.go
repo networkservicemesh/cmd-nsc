@@ -153,8 +153,8 @@ func main() {
 
 	var dnsClient = null.NewClient()
 
-	if _, err = os.Stat(c.DefaultCorefilePath); err == nil {
-		dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithCorefilePath(c.DefaultCorefilePath))
+	if _, err = os.Stat(c.CoreDNSConfigPath); err == nil {
+		dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithCorefilePath(c.CoreDNSConfigPath))
 	}
 
 	nsmClient := client.NewClient(ctx,
