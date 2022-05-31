@@ -1,4 +1,5 @@
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
+// Copyright (c) 2021-2022 Nordix and/or its affiliates.
 //
 // Copyright (c) 2022 Cisco and/or its affiliates.
 //
@@ -159,16 +160,18 @@ func main() {
 		dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithCorefilePath(c.CoreDNSConfigPath))
 	}
 
+	var healOptions = []heal.Option{heal.WithLivenessCheckInterval(c.LivenessCheckInterval),
+		heal.WithLivenessCheckTimeout(c.LivenessCheckTimeout)}
+
+	if c.LivenessCheckEnabled {
+		healOptions = append(healOptions, heal.WithLivenessCheck(kernelheal.KernelLivenessCheck))
+	}
+
 	nsmClient := client.NewClient(ctx,
 		client.WithClientURL(&c.ConnectTo),
 		client.WithName(c.Name),
 		client.WithAuthorizeClient(authorize.NewClient()),
-		client.WithHealClient(
-			heal.NewClient(
-				ctx,
-				heal.WithLivenessCheck(kernelheal.KernelLivenessCheck),
-				heal.WithLivenessCheckInterval(c.LivenessCheckInterval),
-				heal.WithLivenessCheckTimeout(c.LivenessCheckTimeout))),
+		client.WithHealClient(heal.NewClient(ctx, healOptions...)),
 		client.WithAdditionalFunctionality(
 			clientinfo.NewClient(),
 			sriovtoken.NewClient(),
