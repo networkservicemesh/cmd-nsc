@@ -1,4 +1,5 @@
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
+// Copyright (c) 2021-2022 Nordix and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -44,6 +45,7 @@ type Config struct {
 
 	CoreDNSConfigPath string `default:"/etc/coredns/Corefile" desc:"Default path to the Corefile source"`
 
+	LivenessCheckEnabled  bool          `default:"true" desc:"Dataplane liveness check enabled/disabled"`
 	LivenessCheckInterval time.Duration `default:"200ms" desc:"Dataplane liveness check interval"`
 	LivenessCheckTimeout  time.Duration `default:"1s" desc:"Dataplane liveness check timeout"`
 }
