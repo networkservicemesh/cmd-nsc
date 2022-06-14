@@ -8,82 +8,33 @@ on:
   pull_request:
 jobs:
   yamllint:
-    uses: networkservicemesh/.github/.github/workflows/yamllint.yaml@main
+    uses: NikitaSkrynnik/.github/.github/workflows/yamllint.yaml@cmd-workflows
 
   shellcheck:
-    uses: networkservicemesh/.github/.github/workflows/shellcheck.yaml@main
-
-  build:
-    name: build
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    steps:
-      - name: Check out code
-        uses: actions/checkout@v2
-      - name: Setup Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: 1.18.2
-      - name: Build
-        run: go build -race ./...
+    uses: NikitaSkrynnik/.github/.github/workflows/shellcheck.yaml@cmd-workflows
 
   golangci-lint:
-    uses: networkservicemesh/.github/.github/workflows/golangci-lint.yaml@main
+    uses: NikitaSkrynnik/.github/.github/workflows/golangci-lint.yaml@cmd-workflows
 
   excludeFmtErrorf:
-    uses: networkservicemesh/.github/.github/workflows/exclude-fmt-errorf.yaml@main
+    uses: NikitaSkrynnik/.github/.github/workflows/exclude-fmt-errorf.yaml@cmd-workflows
 
   restrictNSMDeps:
-    uses: networkservicemesh/.github/.github/workflows/restrict-nsm-deps.yaml@main
+    uses: NikitaSkrynnik/.github/.github/workflows/restrict-nsm-deps.yaml@cmd-workflows
     with:
       allowed_repositories: "api, sdk, sdk-k8s, sdk-kernel, sdk-sriov, sdk-vpp"
 
   checkgomod:
-    uses: networkservicemesh/.github/.github/workflows/checkgomod.yaml@main
+    uses: NikitaSkrynnik/.github/.github/workflows/checkgomod.yaml@cmd-workflows
 
   gogenerate:
-    name: Check generated files
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v1
-        with:
-          go-version: 1.18.2
-      - run: go generate ./...
-      - name: Check for changes
-        run: |
-          git diff --name-only --exit-code || ( echo "Rerun go generate ./... locally and resubmit" && false )
+    uses: NikitaSkrynnik/.github/.github/workflows/cmd-gogenerate.yaml@cmd-workflows
 
   excludereplace:
-    uses: networkservicemesh/.github/.github/workflows/exclude-replace.yaml@main
+    uses: NikitaSkrynnik/.github/.github/workflows/exclude-replace.yaml@cmd-workflows
 
-  docker:
-    name: Docker Build & Test
-    runs-on: ubuntu-latest
+  docker-build-and-test:
     if: github.repository != 'networkservicemesh/cmd-template'
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v1
-        with:
-          go-version: 1.18.2
-      - name: Build container
-        run: docker build .
-      - name: Run tests
-        run: docker run --privileged --rm $(docker build -q . --target test)
-      - name: Find merged PR
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: jwalton/gh-find-current-pr@v1
-        id: findPr
-        with:
-          github-token: ${{ github.token }}
-      - name: Publish Image
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && success() && steps.findPr.outputs.number
-        uses: matootie/github-docker@v3.0.0
-        with:
-          accessToken: ${{ github.token }}
-          tag: |
-            pr-${{ steps.findPr.outputs.pr }}
-            commit-${{ github.sha }}
-            latest
+    uses: NikitaSkrynnik/.github/.github/workflows/docker-build-and-test.yaml@cmd-workflows
+    secrets:
+      token: ${{ github.token }}

@@ -6,6 +6,6 @@ on:
       - update/**
 jobs:
   auto-pull-request:
-    uses: networkservicemesh/.github/.github/workflows/pr-for-updates.yaml@main
+    uses: NikitaSkrynnik/.github/.github/workflows/pr-for-updates.yaml@cmd-workflows
     secrets:
       token: ${{ secrets.NSM_BOT_GITHUB_TOKEN }}
