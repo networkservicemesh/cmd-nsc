@@ -187,6 +187,7 @@ func main() {
 		client.WithDialOptions(dialOptions...),
 	)
 
+
 	nsmClient = retry.NewClient(nsmClient, retry.WithTryTimeout(c.RequestTimeout))
 
 	// ********************************************************************************
