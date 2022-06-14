@@ -7,9 +7,6 @@ on:
       - 'release/**'
   pull_request:
 jobs:
-  yamllint:
-    uses: NikitaSkrynnik/.github/.github/workflows/yamllint.yaml@cmd-workflows
-
   shellcheck:
     uses: NikitaSkrynnik/.github/.github/workflows/shellcheck.yaml@cmd-workflows
 
@@ -33,8 +30,3 @@ jobs:
   excludereplace:
     uses: NikitaSkrynnik/.github/.github/workflows/exclude-replace.yaml@cmd-workflows
 
-  docker-build-and-test:
-    if: github.repository != 'networkservicemesh/cmd-template'
-    uses: NikitaSkrynnik/.github/.github/workflows/docker-build-and-test.yaml@cmd-workflows
-    secrets:
-      token: ${{ github.token }}
