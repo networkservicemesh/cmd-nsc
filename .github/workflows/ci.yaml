@@ -10,9 +10,6 @@ jobs:
   shellcheck:
     uses: NikitaSkrynnik/.github/.github/workflows/shellcheck.yaml@cmd-workflows
 
-  golangci-lint:
-    uses: NikitaSkrynnik/.github/.github/workflows/golangci-lint.yaml@cmd-workflows
-
   excludeFmtErrorf:
     uses: NikitaSkrynnik/.github/.github/workflows/exclude-fmt-errorf.yaml@cmd-workflows
 
