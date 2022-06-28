@@ -56,10 +56,18 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/sendfd"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/null"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/retry"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/connectioncontext/dnscontext"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/cache"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/dnsconfigs"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/fanout"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/next"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/noloop"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/norecursion"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/resolvconf"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/searches"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/log/logruslogger"
@@ -154,11 +162,20 @@ func main() {
 		),
 	)
 
-	var dnsClient = null.NewClient()
+	dnsConfigsMap := new(dnsconfigs.Map)
+	resolvconf.NewDNSHandler(resolvconf.WithChainContext(ctx), resolvconf.WithDNSConfigsMap(dnsConfigsMap))
+	dnsServerHandler := next.NewDNSHandler(
+		dnsconfigs.NewDNSHandler(dnsConfigsMap),
+		searches.NewDNSHandler(),
+		noloop.NewDNSHandler(),
+		norecursion.NewDNSHandler(),
+		cache.NewDNSHandler(),
+		fanout.NewDNSHandler(),
+	)
 
-	if _, err = os.Stat(c.CoreDNSConfigPath); err == nil {
-		dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithCorefilePath(c.CoreDNSConfigPath))
-	}
+	go dnsutils.ListenAndServe(ctx, dnsServerHandler, "127.0.0.1:53")
+
+	var dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithDNSConfigsMap(dnsConfigsMap))
 
 	var healOptions = []heal.Option{heal.WithLivenessCheckInterval(c.LivenessCheckInterval),
 		heal.WithLivenessCheckTimeout(c.LivenessCheckTimeout)}
