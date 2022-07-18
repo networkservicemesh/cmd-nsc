@@ -43,7 +43,7 @@ type Config struct {
 	LogLevel              string                  `default:"INFO" desc:"Log level" split_words:"true"`
 	OpenTelemetryEndpoint string                  `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint"`
 
-	CoreDNSConfigPath string `default:"/etc/coredns/Corefile" desc:"Default path to the Corefile source"`
+	LocalDNSServerAddress string `default:"127.0.0.1:53" desc:"Default address for local DNS server"`
 
 	LivenessCheckEnabled  bool          `default:"true" desc:"Dataplane liveness check enabled/disabled"`
 	LivenessCheckInterval time.Duration `default:"200ms" desc:"Dataplane liveness check interval"`
