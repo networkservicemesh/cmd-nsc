@@ -59,14 +59,15 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/retry"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/connectioncontext/dnscontext"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsconfig"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/cache"
+	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/checkmsg"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/dnsconfigs"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/fanout"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/noloop"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/norecursion"
-	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/resolvconf"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/searches"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -162,9 +163,9 @@ func main() {
 		),
 	)
 
-	dnsConfigsMap := new(dnsconfigs.Map)
-	resolvconf.NewDNSHandler(resolvconf.WithChainContext(ctx), resolvconf.WithDNSConfigsMap(dnsConfigsMap))
+	dnsConfigsMap := new(dnsconfig.Map)
 	dnsServerHandler := next.NewDNSHandler(
+		checkmsg.NewDNSHandler(),
 		dnsconfigs.NewDNSHandler(dnsConfigsMap),
 		searches.NewDNSHandler(),
 		noloop.NewDNSHandler(),
@@ -173,7 +174,7 @@ func main() {
 		fanout.NewDNSHandler(),
 	)
 
-	go dnsutils.ListenAndServe(ctx, dnsServerHandler, "127.0.0.1:53")
+	go dnsutils.ListenAndServe(ctx, dnsServerHandler, c.LocalDNSServerAddress)
 
 	var dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithDNSConfigsMap(dnsConfigsMap))
 
