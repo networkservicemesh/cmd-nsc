@@ -176,8 +176,6 @@ func main() {
 
 	go dnsutils.ListenAndServe(ctx, dnsServerHandler, c.LocalDNSServerAddress)
 
-	var dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithDNSConfigsMap(dnsConfigsMap))
-
 	var healOptions = []heal.Option{heal.WithLivenessCheckInterval(c.LivenessCheckInterval),
 		heal.WithLivenessCheckTimeout(c.LivenessCheckTimeout)}
 
@@ -198,7 +196,7 @@ func main() {
 				kernelmech.MECHANISM: chain.NewNetworkServiceClient(kernel.NewClient()),
 			}),
 			sendfd.NewClient(),
-			dnsClient,
+			dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithDNSConfigsMap(dnsConfigsMap)),
 			excludedprefixes.NewClient(excludedprefixes.WithAwarenessGroups(c.AwarenessGroups)),
 		),
 		client.WithDialTimeout(c.DialTimeout),
