@@ -35,7 +35,6 @@ import (
 	_ "github.com/networkservicemesh/sdk/pkg/tools/dnsutils/fanout"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/dnsutils/next"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/dnsutils/noloop"
-	_ "github.com/networkservicemesh/sdk/pkg/tools/dnsutils/norecursion"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/dnsutils/searches"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
 	_ "github.com/networkservicemesh/sdk/pkg/tools/log"
