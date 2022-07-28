@@ -7,9 +7,9 @@ require (
 	github.com/edwarnicke/grpcfd v1.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/networkservicemesh/api v1.4.1-0.20220711153918-a59689088578
-	github.com/networkservicemesh/sdk v0.5.1-0.20220722102155-cbf511a6cd1e
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20220722102853-39428d0bfdb4
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20220722103443-6839261d7b9a
+	github.com/networkservicemesh/sdk v0.5.1-0.20220728125347-990b34144761
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20220728125711-2cca96db15dd
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20220728130120-4c3a69aace4e
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spiffe/go-spiffe/v2 v2.0.0
@@ -21,6 +21,7 @@ require (
 	github.com/OneOfOne/xxhash v1.2.3 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/edwarnicke/exechelper v1.0.2 // indirect
 	github.com/edwarnicke/serialize v1.0.7 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
@@ -30,6 +31,7 @@ require (
 	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/golang-jwt/jwt/v4 v4.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/miekg/dns v1.1.49 // indirect
