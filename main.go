@@ -67,7 +67,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/checkmsg"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/dnsconfigs"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/fanout"
-	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/next"
+	dnschain "github.com/networkservicemesh/sdk/pkg/tools/dnsutils/chain"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/noloop"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/searches"
 	"github.com/networkservicemesh/sdk/pkg/tools/grpcutils"
@@ -169,7 +169,7 @@ func main() {
 		dnsConfigsMap := new(dnsconfig.Map)
 		dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithDNSConfigsMap(dnsConfigsMap))
 
-		dnsServerHandler := next.NewDNSHandler(
+		dnsServerHandler := dnschain.NewDNSHandler(
 			checkmsg.NewDNSHandler(),
 			dnsconfigs.NewDNSHandler(dnsConfigsMap),
 			searches.NewDNSHandler(),
