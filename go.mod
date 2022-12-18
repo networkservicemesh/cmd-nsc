@@ -7,9 +7,9 @@ require (
 	github.com/edwarnicke/grpcfd v1.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/networkservicemesh/api v1.6.2-0.20221205183940-84c7ff837cdd
-	github.com/networkservicemesh/sdk v0.5.1-0.20221216223505-3057cfc335ca
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20221216223852-a6e924f8aebb
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20221216224511-6d46975dc8ac
+	github.com/networkservicemesh/sdk v0.5.1-0.20221218175527-12616b1aa284
+	github.com/networkservicemesh/sdk-kernel v0.0.0-20221218175910-d48f215b994b
+	github.com/networkservicemesh/sdk-sriov v0.0.0-20221218180324-f1652363bba5
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spiffe/go-spiffe/v2 v2.0.0
@@ -60,9 +60,9 @@ require (
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20220908141613-51c1cc9bc6d0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
