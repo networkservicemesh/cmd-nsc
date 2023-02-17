@@ -163,6 +163,10 @@ linters:
     - varcheck
     - whitespace
 issues:
+  exclude-rules:
+    - path: 'main.go'
+      linters:
+        - revive
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
