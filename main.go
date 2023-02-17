@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
 // Copyright (c) 2021-2022 Nordix and/or its affiliates.
 //
-// Copyright (c) 2022 Cisco and/or its affiliates.
+// Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -20,7 +20,6 @@
 //go:build linux
 // +build linux
 
-// Package main define a nsc application
 package main
 
 import (
@@ -32,6 +31,7 @@ import (
 	"syscall"
 
 	nested "github.com/antonfisher/nested-logrus-formatter"
+	"github.com/edwarnicke/genericsync"
 	"github.com/edwarnicke/grpcfd"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
@@ -61,7 +61,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/upstreamrefresh"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/connectioncontext/dnscontext"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
-	"github.com/networkservicemesh/sdk/pkg/tools/dnsconfig"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils"
 	"github.com/networkservicemesh/sdk/pkg/tools/dnsutils/cache"
 	dnschain "github.com/networkservicemesh/sdk/pkg/tools/dnsutils/chain"
@@ -166,7 +165,7 @@ func main() {
 
 	dnsClient := null.NewClient()
 	if c.LocalDNSServerEnabled {
-		dnsConfigsMap := new(dnsconfig.Map)
+		dnsConfigsMap := new(genericsync.Map[string, []*networkservice.DNSConfig])
 		dnsClient = dnscontext.NewClient(dnscontext.WithChainContext(ctx), dnscontext.WithDNSConfigsMap(dnsConfigsMap))
 
 		dnsServerHandler := dnschain.NewDNSHandler(
