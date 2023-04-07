@@ -49,6 +49,8 @@ type Config struct {
 	LivenessCheckEnabled  bool          `default:"true" desc:"Dataplane liveness check enabled/disabled"`
 	LivenessCheckInterval time.Duration `default:"200ms" desc:"Dataplane liveness check interval"`
 	LivenessCheckTimeout  time.Duration `default:"1s" desc:"Dataplane liveness check timeout"`
+
+	ClientID string `default:"" desc:"Client ID which is used for creating connection ID"`
 }
 
 // IsValid - check if configuration is valid

@@ -33,6 +33,7 @@ import (
 	nested "github.com/antonfisher/nested-logrus-formatter"
 	"github.com/edwarnicke/genericsync"
 	"github.com/edwarnicke/grpcfd"
+	"github.com/google/uuid"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/sirupsen/logrus"
 	"github.com/spiffe/go-spiffe/v2/spiffetls/tlsconfig"
@@ -105,12 +106,15 @@ func main() {
 	if err := envconfig.Process("nsm", c); err != nil {
 		logger.Fatalf("error processing rootConf from env: %+v", err)
 	}
-
 	level, err := logrus.ParseLevel(c.LogLevel)
 	if err != nil {
 		logrus.Fatalf("invalid log level %s", c.LogLevel)
 	}
 	logrus.SetLevel(level)
+
+	if c.ClientID == "" {
+		c.ClientID = uuid.NewString()
+	}
 
 	logger.Infof("rootConf: %+v", c)
 
@@ -244,7 +248,7 @@ func main() {
 		// Update network services configs
 		u := (*nsurl.NSURL)(&c.NetworkServices[i])
 
-		id := fmt.Sprintf("%s-%d", c.Name, i)
+		id := fmt.Sprintf("%s-%s-%d", c.Name, c.ClientID, i)
 		var monitoredConnections map[string]*networkservice.Connection
 		monitorCtx, cancelMonitor := context.WithTimeout(signalCtx, c.RequestTimeout)
 		defer cancelMonitor()
