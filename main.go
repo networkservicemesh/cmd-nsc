@@ -51,7 +51,8 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/authorize"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/clientinfo"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/excludedprefixes"
+
+	// "github.com/networkservicemesh/sdk/pkg/networkservice/common/excludedprefixes"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/heal"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/mechanisms/kernel"
@@ -202,7 +203,7 @@ func main() {
 			}),
 			sendfd.NewClient(),
 			dnsClient,
-			excludedprefixes.NewClient(excludedprefixes.WithAwarenessGroups(c.AwarenessGroups)),
+			//			excludedprefixes.NewClient(excludedprefixes.WithAwarenessGroups(c.AwarenessGroups)),
 		),
 		client.WithDialTimeout(c.DialTimeout),
 		client.WithDialOptions(dialOptions...),
