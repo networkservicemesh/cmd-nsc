@@ -150,17 +150,18 @@ func main() {
 	// Create Network Service Manager nsmClient
 	// ********************************************************************************
 	dialOptions := append(tracing.WithTracingDial(),
-		grpcfd.WithChainStreamInterceptor(),
-		grpcfd.WithChainUnaryInterceptor(),
-		grpc.WithDefaultCallOptions(
-			grpc.WaitForReady(true),
-			grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, c.MaxTokenLifetime))),
-		),
 		grpc.WithTransportCredentials(
 			grpcfd.TransportCredentials(
 				credentials.NewTLS(tlsClientConfig),
 			),
 		),
+		grpc.WithBlock(),
+		grpc.WithDefaultCallOptions(
+			grpc.WaitForReady(true),
+			grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, c.MaxTokenLifetime))),
+		),
+		grpcfd.WithChainStreamInterceptor(),
+		grpcfd.WithChainUnaryInterceptor(),
 	)
 
 	dnsClient := null.NewClient()
