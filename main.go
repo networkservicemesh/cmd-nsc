@@ -157,7 +157,6 @@ func main() {
 		),
 		grpc.WithBlock(),
 		grpc.WithDefaultCallOptions(
-			grpc.WaitForReady(true),
 			grpc.PerRPCCredentials(token.NewPerRPCCredentials(spiffejwt.TokenGeneratorFunc(source, c.MaxTokenLifetime))),
 		),
 		grpcfd.WithChainStreamInterceptor(),
