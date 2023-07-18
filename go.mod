@@ -7,10 +7,10 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/edwarnicke/grpcfd v1.1.2
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/networkservicemesh/api v1.9.1-0.20230627143611-9785eacf9687
-	github.com/networkservicemesh/sdk v0.5.1-0.20230713084322-eaf1d25c7512
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20230713084617-8de98ab0de7f
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20230713085045-7c6038117647
+	github.com/networkservicemesh/api v1.10.0
+	github.com/networkservicemesh/sdk v1.10.0
+	github.com/networkservicemesh/sdk-kernel v1.10.0
+	github.com/networkservicemesh/sdk-sriov v1.10.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spiffe/go-spiffe/v2 v2.0.0
