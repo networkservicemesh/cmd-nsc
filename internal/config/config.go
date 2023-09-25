@@ -42,6 +42,7 @@ type Config struct {
 	AwarenessGroups       awarenessgroups.Decoder `defailt:"" desc:"Awareness groups for mutually aware NSEs" split_words:"true"`
 	LogLevel              string                  `default:"INFO" desc:"Log level" split_words:"true"`
 	OpenTelemetryEndpoint string                  `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint"`
+	MetricsExportInterval time.Duration           `default:"10s" desc:"interval between mertics exports" split_words:"true"`
 
 	LocalDNSServerEnabled bool   `default:"true" desc:"Local DNS Server enabled/disabled"`
 	LocalDNSServerAddress string `default:"127.0.0.1:53" desc:"Default address for local DNS server"`
