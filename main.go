@@ -196,7 +196,7 @@ func main() {
 			clientinfo.NewClient(),
 			upstreamrefresh.NewClient(ctx),
 			sriovtoken.NewClient(),
-			mechanisms.NewClient(map[string]networkservice.NetworkServiceClient{
+			mechanisms.NewClientWithMetrics(map[string]networkservice.NetworkServiceClient{
 				vfiomech.MECHANISM:   chain.NewNetworkServiceClient(vfio.NewClient()),
 				kernelmech.MECHANISM: chain.NewNetworkServiceClient(kernel.NewClient()),
 			}),
