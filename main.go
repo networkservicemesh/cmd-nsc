@@ -251,10 +251,13 @@ func main() {
 		}
 
 		for {
+			requestCtx, requestCancel := context.WithTimeout(ctx, c.RequestTimeout)
+			defer requestCancel()
+
 			// Construct a request
 			request := constructRequest(ctx, c, id, &c.NetworkServices[i], monitoredConnections)
 
-			resp, err := nsmClient.Request(ctx, request)
+			resp, err := nsmClient.Request(requestCtx, request)
 			if err != nil {
 				logger.Errorf("failed connect to NSMgr: %v", err.Error())
 				continue
