@@ -15,7 +15,7 @@ This README will provide directions for building, testing, and debugging that co
 * NSM_MAX_TOKEN_LIFETIME - A token lifetime duration (default 24h)
 * NSM_LABELS - A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services
 * NSM_MECHANISM - Default Mechanism to use, supported values "kernel", "vfio"
-* NSM_NETWORK_SERVICES - A list of Network Service Requests URLs with inner format 
+* NSM_NETWORK_SERVICES - A list of Network Service Requests URLs with inner format
     - \[kernel://]nsName\[@domainName]/interfaceName?\[label1=value1\*(&labelN=valueN)]
     - \[vfio://]nsName\[@domainName]?\[label1=value1\*(&labelN=valueN)]
         - nsName - a Network service name requested
@@ -37,7 +37,15 @@ This README will provide directions for building, testing, and debugging that co
             - **vfio** mechanism
             - **l2-controller** network service
             - **{ sriovToken: "l2.domain/1G" }** request parameters
-        
+* NSM_AWARENESS_GROUPS - Awareness groups for mutually aware NSEs
+* NSM_LIVENESSCHECKENABLED - Dataplane liveness check enabled/disabled
+* NSM_LIVENESSCHECKINTERVAL - Dataplane liveness check interval
+* NSM_LIVENESSCHECKTIMEOUT - Dataplane liveness check timeout
+* NSM_LOCALDNSSERVERADDRESS - Default address for local DNS server
+* NSM_LOCALDNSSERVERENABLED - Local DNS Server enabled/disabled
+* NSM_LOG_LEVEL - Log level
+* NSM_METRICS_EXPORT_INTERVAL - Interval between mertics exports
+* NSM_OPENTELEMETRYENDPOINT - OpenTelemetry Collector Endpoint
 
 # Build
 
