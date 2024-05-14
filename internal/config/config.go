@@ -1,7 +1,10 @@
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
+//
 // Copyright (c) 2021-2022 Nordix and/or its affiliates.
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
+//
+// Copyright (c) 2024 OpenInfra Foundation Europe. All rights reserved.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -43,15 +46,15 @@ type Config struct {
 	NetworkServices       []url.URL               `default:"" desc:"A list of Network Service Requests" split_words:"true"`
 	AwarenessGroups       awarenessgroups.Decoder `defailt:"" desc:"Awareness groups for mutually aware NSEs" split_words:"true"`
 	LogLevel              string                  `default:"INFO" desc:"Log level" split_words:"true"`
-	OpenTelemetryEndpoint string                  `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint"`
+	OpenTelemetryEndpoint string                  `default:"otel-collector.observability.svc.cluster.local:4317" desc:"OpenTelemetry Collector Endpoint" split_words:"true"`
 	MetricsExportInterval time.Duration           `default:"10s" desc:"interval between mertics exports" split_words:"true"`
 
-	LocalDNSServerEnabled bool   `default:"true" desc:"Local DNS Server enabled/disabled"`
-	LocalDNSServerAddress string `default:"127.0.0.1:53" desc:"Default address for local DNS server"`
+	LocalDNSServerEnabled bool   `default:"true" desc:"Local DNS Server enabled/disabled" split_words:"true"`
+	LocalDNSServerAddress string `default:"127.0.0.1:53" desc:"Default address for local DNS server" split_words:"true"`
 
-	LivenessCheckEnabled  bool          `default:"true" desc:"Dataplane liveness check enabled/disabled"`
-	LivenessCheckInterval time.Duration `default:"200ms" desc:"Dataplane liveness check interval"`
-	LivenessCheckTimeout  time.Duration `default:"1s" desc:"Dataplane liveness check timeout"`
+	LivenessCheckEnabled  bool          `default:"true" desc:"Dataplane liveness check enabled/disabled" split_words:"true"`
+	LivenessCheckInterval time.Duration `default:"200ms" desc:"Dataplane liveness check interval" split_words:"true"`
+	LivenessCheckTimeout  time.Duration `default:"1s" desc:"Dataplane liveness check timeout" split_words:"true"`
 }
 
 // IsValid - check if configuration is valid

@@ -8,14 +8,14 @@ This README will provide directions for building, testing, and debugging that co
 
 `cmd-nsc` accept following environment variables:
 
-* NSM_NAME - A string value of network service client name (default "nsc")
-* NSM_CONNECT_TO - A Network service Manager connectTo URL (default "unix:///var/lib/networkservicemesh/nsm.io.sock")
-* NSM_DIAL_TIMEOUT - A timeout to dial Network Service Manager (default 5s)
-* NSM_REQUEST_TIMEOUT - A timeout to request Network Service Endpoint (default 15s)
-* NSM_MAX_TOKEN_LIFETIME - A token lifetime duration (default 24h)
-* NSM_LABELS - A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services
-* NSM_MECHANISM - Default Mechanism to use, supported values "kernel", "vfio"
-* NSM_NETWORK_SERVICES - A list of Network Service Requests URLs with inner format 
+* `NSM_NAME` - A string value of network service client name (default "nsc")
+* `NSM_CONNECT_TO` - A Network service Manager connectTo URL (default "unix:///var/lib/networkservicemesh/nsm.io.sock")
+* `NSM_DIAL_TIMEOUT` - A timeout to dial Network Service Manager (default 5s)
+* `NSM_REQUEST_TIMEOUT` - A timeout to request Network Service Endpoint (default 15s)
+* `NSM_MAX_TOKEN_LIFETIME` - A token lifetime duration (default 24h)
+* `NSM_LABELS` - A list of client labels with format key1=val1,key2=val2, will be used a primary list for network services
+* `NSM_MECHANISM` - Default Mechanism to use, supported values "kernel", "vfio"
+* `NSM_NETWORK_SERVICES` - A list of Network Service Requests URLs with inner format
     - \[kernel://]nsName\[@domainName]/interfaceName?\[label1=value1\*(&labelN=valueN)]
     - \[vfio://]nsName\[@domainName]?\[label1=value1\*(&labelN=valueN)]
         - nsName - a Network service name requested
@@ -37,7 +37,15 @@ This README will provide directions for building, testing, and debugging that co
             - **vfio** mechanism
             - **l2-controller** network service
             - **{ sriovToken: "l2.domain/1G" }** request parameters
-        
+* `NSM_AWARENESS_GROUPS`         - Awareness groups for mutually aware NSEs
+* `NSM_LIVENESS_CHECK_ENABLED`   - Dataplane liveness check enabled/disabled
+* `NSM_LIVENESS_CHECK_INTERVAL`  - Dataplane liveness check interval
+* `NSM_LIVENESS_CHECK_TIMEOUT`   - Dataplane liveness check timeout
+* `NSM_LOCAL_DNS_SERVER_ADDRESS` - Default address for local DNS server
+* `NSM_LOCAL_DNS_SERVER_ENABLED` - Local DNS Server enabled/disabled
+* `NSM_LOG_LEVEL`                - Log level
+* `NSM_METRICS_EXPORT_INTERVAL`  - interval between mertics exports
+* `NSM_OPEN_TELEMETRY_ENDPOINT`  - OpenTelemetry Collector Endpoint
 
 # Build
 
