@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2021-2022 Nordix and/or its affiliates.
 //
-// Copyright (c) 2023 Cisco and/or its affiliates.
+// Copyright (c) 2023-2024 Cisco and/or its affiliates.
 //
 // Copyright (c) 2024 OpenInfra Foundation Europe. All rights reserved.
 //
@@ -55,6 +55,9 @@ type Config struct {
 	LivenessCheckEnabled  bool          `default:"true" desc:"Dataplane liveness check enabled/disabled" split_words:"true"`
 	LivenessCheckInterval time.Duration `default:"200ms" desc:"Dataplane liveness check interval" split_words:"true"`
 	LivenessCheckTimeout  time.Duration `default:"1s" desc:"Dataplane liveness check timeout" split_words:"true"`
+
+	PprofEnabled  bool   `default:"false" desc:"is pprof enabled" split_words:"true"`
+	PprofListenOn string `default:"localhost:6060" desc:"pprof URL to ListenAndServe" split_words:"true"`
 }
 
 // IsValid - check if configuration is valid
