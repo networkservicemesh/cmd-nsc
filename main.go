@@ -114,6 +114,10 @@ func main() {
 		logrus.Fatalf("invalid log level %s", c.LogLevel)
 	}
 	logrus.SetLevel(level)
+	logruslogger.SetupLevelChangeOnSignal(ctx, map[os.Signal]logrus.Level{
+		syscall.SIGUSR1: logrus.TraceLevel,
+		syscall.SIGUSR2: level,
+	})
 
 	logger.Infof("rootConf: %+v", c)
 
