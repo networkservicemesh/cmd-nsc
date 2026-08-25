@@ -7,12 +7,12 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/edwarnicke/grpcfd v1.1.4
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/networkservicemesh/api v1.19.0-rc.1.0.20260824081105-7ccb73c2b1b0
-	github.com/networkservicemesh/sdk v0.5.1-0.20260824084712-ee8eec42a3ce
-	github.com/networkservicemesh/sdk-kernel v0.0.0-20260824090242-eac4345ad1d9
-	github.com/networkservicemesh/sdk-sriov v0.0.0-20260824095542-f70b6c9639e0
+	github.com/networkservicemesh/api v1.19.0
+	github.com/networkservicemesh/sdk v1.19.0
+	github.com/networkservicemesh/sdk-kernel v1.19.0
+	github.com/networkservicemesh/sdk-sriov v1.19.0
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/spiffe/go-spiffe/v2 v2.6.0
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.82.1
